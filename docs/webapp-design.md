@@ -1,0 +1,44 @@
+# DTI Lab 웹앱 구현 메모
+
+2026-11-12 모델 방법 안내 추가:
+
+- 실행 로그 아래에 ‘모델별 예측 방법’ 비교 표를 추가했다. 약물·단백질 표현, 3D 계산 여부, 예측값을 구분하고 CNN·MPNN·ConPLex·Boltz-2 각각의 원리·한계·공식 출처를 펼쳐 볼 수 있다.
+- 사용 모델 선택 아래에 비교 표 링크, 각 결과에 해당 모델의 상세 설명을 여는 링크를 제공한다. 그래프는 약물 2D 그래프이고, 현재 Boltz-2는 MSA 없는 실행임을 명시한다. 모델 구조와 학습 endpoint를 구분하며 기존 원시 출력과 보정 상태를 유지한다.
+- JavaScript 문법 검사와 실제 저장 실행 `39d6afba`의 4개 결과 표시를 확인했다. 브라우저에서 네 모델 링크의 상세 열기·포커스·주소 이동, 1440px/390px 화면, 모바일 표 가로 스크롤과 페이지 가로 넘침 없음, JavaScript 오류 없음을 확인했다. 화면 기록: `runs/web-methods-desktop.png`, `runs/web-methods-mobile.png`. 표시 기능만 변경했으며 새 추론은 실행하지 않았다.
+
+2026-11-11 예시 선택 수정: ‘예시 입력 불러오기’ 목록을 바꾸면 SMILES와 전체 Protein sequence를 즉시 적용한다. 별도 적용 버튼을 제거했고 초기·새 입력 상태는 직접 입력으로 맞췄다. 실제 브라우저에서 예시 12개를 차례로 선택하여 두 입력값·서열 길이·출처가 카탈로그와 일치함을 확인했다. 직접 수정하면 예시 출처를 숨기며 새 입력은 일관되게 초기화된다. JavaScript 문법 검사도 통과했다.
+
+2026-11-11 M2 업데이트: 사용 모델 선택(CNN / MPNN / 두 모델 비교),
+모델별 원시 점수·오류, `partial` 상태, 모델별 준비 상태를 추가했다.
+현재 기능·공식 추론 검증은 [다중 모델 구현 기록](multimodel-implementation.md)을 따른다.
+
+2026-11-11 M3 화면 업데이트:
+
+- `/api/status`의 모델 목록을 체크박스로 표시한다. CNN·MPNN만 기본 선택하며 Boltz-2와 ConPLex는 사용자가 선택한다. 상태 새로고침은 사용자의 선택을 유지한다.
+- 장치는 모델별 권장 장치를 사용하는 `auto`가 기본이며 CPU·CUDA를 명시할 수 있다. 모델별 길이·원자 제한, 준비 상태와 실패 이유를 함께 표시한다.
+- DTA 원시 값, ConPLex DTI 점수, 모델이 반환하는 binder 확률을 구분한다. Binder 확률에는 독립 보정 미검증 설명을 표시하며, 구조 confidence는 affinity 예측 구간으로 표현하지 않는다. 모델별 경고와 구조 품질은 펼쳐 볼 수 있다.
+- 긴 실행은 경과 시간을 표시한다. 모델을 추가해도 예시 선택, 입력 원본 확인, 실행 이력과 스킬·도구 로그, JSON/JSONL 다운로드를 유지한다.
+- 현재 권한에서 `agent-browser`가 정상 작동했다. 브라우저에서 예시를 입력하고 CNN·CPU를 선택해 실제 추론 성공 및 로그 표시를 확인했다(실행 ID 접두사 `7658ba04`). 데스크톱·390px 모바일을 확인했고 모바일 문서 폭은 viewport를 넘지 않았다. 화면 캡처는 `runs/web-models-desktop.png`, `runs/web-models-mobile.png`다.
+- 4모델 backend 통합 후, 초기 선택이 CNN·MPNN 및 장치 `auto`이고 Boltz-2·ConPLex는 선택되지 않았음을 확인했다. 웹에서 Trimethoprim–대장균 DHFR 예시로 CNN·MPNN·ConPLex 비교를 제출해 세 모델 모두 성공했다. 실행 ID는 `45b0cb9b9b514f8f89aff75e039ceb56`; 원시 값은 각각 `5.488584518432617`, `5.838779926300049`, `0.08126738667488098`이다. 로그에는 `skill.loaded`, `tool.started`, 모델별 `model.started`·`model.completed`, `tool.completed` 등 11개 이벤트가 있다. ConPLex는 `cosine_similarity`와 ‘높을수록 상호작용 점수 큼’으로 표시하며, 친화도나 확률로 표현하지 않는다.
+- Boltz-2의 실제 저장 실행 `79d320044ec94914a2b074b022e684e4`를 이력에서 열어 `-2.1900` / `log10_IC50_uM`, 모델의 binder 확률 `99.44%`, 독립 보정 미검증 안내, 구조 confidence 펼치기를 확인했다. 이 검사는 저장된 결과의 표시 검증이며 Boltz 추론을 추가 실행하지 않았다.
+- 최종 화면은 `runs/web-models-comparison-desktop.png`, `runs/web-models-boltz-desktop.png`, `runs/web-models-boltz-mobile.png`에 있다. 1440px 데스크톱과 390px 모바일을 시각 확인했으며, 모바일 `documentElement.scrollWidth <= innerWidth`가 참이었다. 브라우저 JavaScript 오류는 없었다.
+- 실행 이력에서 입력을 불러오면 SMILES와 정규화한 서열이 일치하는 예시·출처를 함께 선택한다. Boltz 저장 실행을 클릭해 Trimethoprim–DHFR / P0ABQ4 / 159 aa 표시를 확인했다. 일치 항목이 없는 저장 실행은 ‘직접 입력 / 저장된 실행’으로 표시하고 예시 출처 상세를 숨긴다. 목록은 입력용 템플릿임을 명시하며, 직접 입력 변경 시에도 동일한 규칙을 적용한다.
+
+화면의 질문: 이 SMILES·Protein 쌍에 대해 어떤 원시 예측값이 나왔고, 어떤 스킬과 도구가 실행되었는가?
+
+- 디자인: design-taste-frontend의 Framed sheet, seed 1235048779. 재추첨 없음.
+- 밝은 청록 회색 프레임, 흰 작업 영역, 입력과 결과를 같은 너비로 배치했다.
+- 제품 고유 요소는 SMILES × Protein 입력 쌍과 실제 `skill.loaded → tool.started → 결과` 실행 기록이다.
+- 한국어·Windows 오프라인 사용을 위해 `--keep type`으로 Segoe UI / 맑은 고딕을 유지하고, 코드·서열·실행 ID만 Consolas로 표시한다. 웹 폰트나 외부 요청은 없다.
+- 실제 기록만 화면에 표시한다. 예시 선택기는 공개 출처의 약물·표적 12쌍을 제공하며, 전체 서열 길이·분자·서열 출처·상호작용 근거를 함께 표시한다. 예시에 실험 정답은 없으며 학습 데이터와의 독립성은 확인하지 않았다. 가중치 미설치 상태는 점수를 표시하지 않는다.
+- 실행 이력은 데스크톱 좌측에, 작은 화면에서는 ‘최근 실행’ 버튼으로 연다.
+
+초기 구현 당시 검증 기록 (현재 4모델 검증은 위 참조):
+
+- `runs/verification-pretrained-examples.xml`: 80개 통과, 생략 0개. 공식 CNN·MPNN으로 12개 예시 각각의 실제 추론을 확인했다. `runs/verification-web-official.json`에는 실제 웹 API 비교 실행과 스킬·모델별 로그, 다운로드 검증 결과가 있다. 테스트용 고정 가중치는 별도 임시 폴더에 격리했다.
+- JavaScript 문법 검사와 스킬 validator 통과.
+- UI lint: 0 FAIL / 3 WARN. 경고는 코드·서열·실행 ID·이벤트 이름의 monospace 사용이며 앱 화면 규칙에 따라 유지했다.
+- 실제 브라우저 검사 시도: Chrome, Edge, Playwright headless shell 모두 CDP `Page.enable` 단계에서 타임아웃. agent-browser도 CDP 응답 연결 오류, 내장 브라우저는 호스트 연결 불가. 따라서 화면 스크린샷 기반 평가는 미완료이며 시각 검증 통과로 기록하지 않는다.
+- REA 브라우저 시나리오 검사도 도구 승인 정책에서 거절됐다. API·실제 추론 검증과 브라우저 시각 검증을 구분한다.
+
+코드 검토에서 작은 화면의 실행 이력 접근 버튼을 추가하고, 직접 tool만 호출한 실행은 화면의 경로에서 skill 단계를 제외했다. 이벤트 수·실행 상태·출처는 저장된 하나의 실행 기록에서 읽는다. 화면의 과학적 수치는 실제 성공 응답이 있을 때만 표시한다.

@@ -1,0 +1,2 @@
+# Separate from inference; v1 API, Python >=3.10.
+mcp==1.30.0

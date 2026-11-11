@@ -1,0 +1,34 @@
+{
+  "model": "CNN_CNN_BindingDB",
+  "dataset_doi": "doi:10.7910/DVN/CNQV69",
+  "dataset_version": 8,
+  "file": {
+    "id": 4159715,
+    "persistentId": "",
+    "filename": "model_cnn_cnn_bindingdb.zip",
+    "contentType": "application/zip",
+    "friendlyType": "ZIP Archive",
+    "filesize": 9193905,
+    "storageIdentifier": "s3://dvn-cloud:17570e976f3-7838b89a788f",
+    "rootDataFileId": -1,
+    "md5": "2e040c1d1fbcbc50bce6d1bbae3dc5db",
+    "checksum": {
+      "type": "MD5",
+      "value": "2e040c1d1fbcbc50bce6d1bbae3dc5db"
+    },
+    "tabularData": false,
+    "creationDate": "2020-10-28",
+    "publicationDate": "2020-10-28",
+    "lastUpdateTime": "2023-09-15T17:34:34Z",
+    "fileAccessRequest": false
+  },
+  "retrieved_at": "2026-11-11",
+  "download_tool": "ToolUniverse.download_binary_file",
+  "download_url": "https://dataverse.harvard.edu/api/access/datafile/4159715",
+  "archive_sha256": "1f5c62863303d5057566b3b29be24e31cc138b361dfb8b085b53c8169d8c6829",
+  "files_sha256": {
+    "config.pkl": "731dff45208f6e40c4d106b4a66e0bdf3cc44a0cef6e597b6b53ea8ffb3e153c",
+    "model.pt": "318a402b72fa5e1c27244ffa78ab071813e4eb08522421bdd229d06f707ff723"
+  },
+  "notes": "Publisher MD5 checks download consistency, not a digital signature. SHA-256 pins the exact archive and model artifacts verified in this workspace. Local ZIP import remains acquisition=local_archive."
+}

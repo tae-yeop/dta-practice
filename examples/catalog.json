@@ -1,0 +1,237 @@
+{
+  "schema_version": "1.0",
+  "retrieved_at": "2026-11-11",
+  "purpose": "workflow_examples_not_validation_benchmark",
+  "description": "공개 데이터베이스의 분자 구조와 전체 단백질 서열을 사용한 실행 예시입니다. 실험 affinity 정답이나 음성 대조군, 독립 검증 세트가 아닙니다.",
+  "compounds": {
+    "1986": {
+      "cid": 1986,
+      "name": "Acetazolamide",
+      "smiles": "CC(=O)NC1=NN=C(S1)S(=O)(=O)N",
+      "inchikey": "BZKPWHYZMXOIDC-UHFFFAOYSA-N",
+      "molecular_formula": "C4H6N4O3S2",
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/1986"
+    },
+    "2153": {
+      "cid": 2153,
+      "name": "Theophylline",
+      "smiles": "CN1C2=C(C(=O)N(C1=O)C)NC=N2",
+      "inchikey": "ZFXYFBGIUFBOJW-UHFFFAOYSA-N",
+      "molecular_formula": "C7H8N4O2",
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/2153"
+    },
+    "2244": {
+      "cid": 2244,
+      "name": "Aspirin",
+      "smiles": "CC(=O)OC1=CC=CC=C1C(=O)O",
+      "inchikey": "BSYNRYMUTXBXSQ-UHFFFAOYSA-N",
+      "molecular_formula": "C9H8O4",
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/2244"
+    },
+    "2519": {
+      "cid": 2519,
+      "name": "Caffeine",
+      "smiles": "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+      "inchikey": "RYYVLZVUVIJVGH-UHFFFAOYSA-N",
+      "molecular_formula": "C8H10N4O2",
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/2519"
+    },
+    "2662": {
+      "cid": 2662,
+      "name": "Celecoxib",
+      "smiles": "CC1=CC=C(C=C1)C2=CC(=NN2C3=CC=C(C=C3)S(=O)(=O)N)C(F)(F)F",
+      "inchikey": "RZEKVGVHFLEQIL-UHFFFAOYSA-N",
+      "molecular_formula": "C17H14F3N3O2S",
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/2662"
+    },
+    "3033": {
+      "cid": 3033,
+      "name": "Diclofenac",
+      "smiles": "C1=CC=C(C(=C1)CC(=O)O)NC2=C(C=CC=C2Cl)Cl",
+      "inchikey": "DCOPUUMXTXDBNB-UHFFFAOYSA-N",
+      "molecular_formula": "C14H11Cl2NO2",
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/3033"
+    },
+    "3672": {
+      "cid": 3672,
+      "name": "Ibuprofen, (+-)-",
+      "smiles": "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O",
+      "inchikey": "HEFNNWSXXWATRW-UHFFFAOYSA-N",
+      "molecular_formula": "C13H18O2",
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/3672"
+    },
+    "4100": {
+      "cid": 4100,
+      "name": "Methazolamide",
+      "smiles": "CC(=O)N=C1N(N=C(S1)S(=O)(=O)N)C",
+      "inchikey": "FLOSMHQXBMRNHR-UHFFFAOYSA-N",
+      "molecular_formula": "C5H8N4O3S2",
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/4100"
+    },
+    "5578": {
+      "cid": 5578,
+      "name": "Trimethoprim",
+      "smiles": "COC1=CC(=CC(=C1OC)OC)CC2=CN=C(N=C2N)N",
+      "inchikey": "IEDVJHCEMCRBQM-UHFFFAOYSA-N",
+      "molecular_formula": "C14H18N4O3",
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/5578"
+    }
+  },
+  "targets": {
+    "P23219": {
+      "accession": "P23219",
+      "name": "PTGS1 / COX-1",
+      "organism": "Homo sapiens",
+      "sequence": "MSRSLLLWFLLFLLLLPPLPVLLADPGAPTPVNPCCYYPCQHQGICVRFGLDRYQCDCTRTGYSGPNCTIPGLWTWLRNSLRPSPSFTHFLLTHGRWFWEFVNATFIREMLMRLVLTVRSNLIPSPPTYNSAHDYISWESFSNVSYYTRILPSVPKDCPTPMGTKGKKQLPDAQLLARRFLLRRKFIPDPQGTNLMFAFFAQHFTHQFFKTSGKMGPGFTKALGHGVDLGHIYGDNLERQYQLRLFKDGKLKYQVLDGEMYPPSVEEAPVLMHYPRGIPPQSQMAVGQEVFGLLPGLMLYATLWLREHNRVCDLLKAEHPTWGDEQLFQTTRLILIGETIKIVIEEYVQQLSGYFLQLKFDPELLFGVQFQYRNRIAMEFNHLYHWHPLMPDSFKVGSQEYSYEQFLFNTSMLVDYGVEALVDAFSRQIAGRIGGGRNMDHHILHVAVDVIRESREMRLQPFNEYRKRFGMKPYTSFQELVGEKEMAAELEELYGDIDALEFYPGLLLEKCHPNSIFGESMIEIGAPFSLKGLLGNPICSPEYWKPSTFGGEVGFNIVKTATLKKLVCLNTKTCPYVSFRVPDASQDDGPAVERPSTEL",
+      "sequence_length": 599,
+      "sequence_scope": "full_length_canonical",
+      "source_url": "https://rest.uniprot.org/uniprotkb/P23219.fasta"
+    },
+    "P35354": {
+      "accession": "P35354",
+      "name": "PTGS2 / COX-2",
+      "organism": "Homo sapiens",
+      "sequence": "MLARALLLCAVLALSHTANPCCSHPCQNRGVCMSVGFDQYKCDCTRTGFYGENCSTPEFLTRIKLFLKPTPNTVHYILTHFKGFWNVVNNIPFLRNAIMSYVLTSRSHLIDSPPTYNADYGYKSWEAFSNLSYYTRALPPVPDDCPTPLGVKGKKQLPDSNEIVEKLLLRRKFIPDPQGSNMMFAFFAQHFTHQFFKTDHKRGPAFTNGLGHGVDLNHIYGETLARQRKLRLFKDGKMKYQIIDGEMYPPTVKDTQAEMIYPPQVPEHLRFAVGQEVFGLVPGLMMYATIWLREHNRVCDVLKQEHPEWGDEQLFQTSRLILIGETIKIVIEDYVQHLSGYHFKLKFDPELLFNKQFQYQNRIAAEFNTLYHWHPLLPDTFQIHDQKYNYQQFIYNNSILLEHGITQFVESFTRQIAGRVAGGRNVPPAVQKVSQASIDQSRQMKYQSFNEYRKRFMLKPYESFEELTGEKEMSAELEALYGDIDAVELYPALLVEKPRPDAIFGETMVEVGAPFSLKGLMGNVICSPAYWKPSTFGGEVGFQIINTASIQSLICNNVKGCPFTSFSVPDPELIKTVTINASSSRSGLDDINPTVLLKERSTEL",
+      "sequence_length": 604,
+      "sequence_scope": "full_length_canonical",
+      "source_url": "https://rest.uniprot.org/uniprotkb/P35354.fasta"
+    },
+    "P00918": {
+      "accession": "P00918",
+      "name": "CA2 / Carbonic anhydrase II",
+      "organism": "Homo sapiens",
+      "sequence": "MSHHWGYGKHNGPEHWHKDFPIAKGERQSPVDIDTHTAKYDPSLKPLSVSYDQATSLRILNNGHAFNVEFDDSQDKAVLKGGPLDGTYRLIQFHFHWGSLDGQGSEHTVDKKKYAAELHLVHWNTKYGDFGKAVQQPDGLAVLGIFLKVGSAKPGLQKVVDVLDSIKTKGKSADFTNFDPRGLLPESLDYWTYPGSLTTPPLLECVTWIVLKEPISVSSEQVLKFRKLNFNGEGEPEELMVDNWRPAQPLKNRQIKASFK",
+      "sequence_length": 260,
+      "sequence_scope": "full_length_canonical",
+      "source_url": "https://rest.uniprot.org/uniprotkb/P00918.fasta"
+    },
+    "P0ABQ4": {
+      "accession": "P0ABQ4",
+      "name": "folA / Dihydrofolate reductase",
+      "organism": "Escherichia coli K-12",
+      "sequence": "MISLIAALAVDRVIGMENAMPWNLPADLAWFKRNTLNKPVIMGRHTWESIGRPLPGRKNIILSSQPGTDDRVTWVKSVDEAIAACGDVPEIMVIGGGRVYEQFLPKAQKLYLTHIDAEVEGDTHFPDYEPDDWESVFSEFHDADAQNSHSYCFEILERR",
+      "sequence_length": 159,
+      "sequence_scope": "full_length_canonical",
+      "source_url": "https://rest.uniprot.org/uniprotkb/P0ABQ4.fasta"
+    },
+    "P29274": {
+      "accession": "P29274",
+      "name": "ADORA2A / Adenosine A2A receptor",
+      "organism": "Homo sapiens",
+      "sequence": "MPIMGSSVYITVELAIAVLAILGNVLVCWAVWLNSNLQNVTNYFVVSLAAADIAVGVLAIPFAITISTGFCAACHGCLFIACFVLVLTQSSIFSLLAIAIDRYIAIRIPLRYNGLVTGTRAKGIIAICWVLSFAIGLTPMLGWNNCGQPKEGKNHSQGCGEGQVACLFEDVVPMNYMVYFNFFACVLVPLLLMLGVYLRIFLAARRQLKQMESQPLPGERARSTLQKEVHAAKSLAIIVGLFALCWLPLHIINCFTFFCPDCSHAPLWLMYLAIVLSHTNSVVNPFIYAYRIREFRQTFRKIIRSHVLRQQEPFKAAGTSARVLAAHGSDGEQVSLRLNGHPPGVWANGSAPHPERRPNGYALGLVSGGSAQESQGNTGLPDVELLSHELKGVCPEPPGLDDPLAQDGAGVS",
+      "sequence_length": 412,
+      "sequence_scope": "full_length_canonical",
+      "source_url": "https://rest.uniprot.org/uniprotkb/P29274.fasta"
+    }
+  },
+  "pairs": [
+    {
+      "id": "aspirin-cox1",
+      "cid": 2244,
+      "accession": "P23219",
+      "category": "documented_interaction",
+      "evidence_url": "https://www.guidetopharmacology.org/GRAC/ObjectDisplayForward?objectId=1375",
+      "note": "Aspirin의 비가역적 COX 억제는 이 원시 점수만으로 기전이나 반응 속도를 설명할 수 없습니다.",
+      "reference_affinity": null
+    },
+    {
+      "id": "aspirin-cox2",
+      "cid": 2244,
+      "accession": "P35354",
+      "category": "documented_interaction",
+      "evidence_url": "https://www.guidetopharmacology.org/GRAC/ObjectInteractionStructuresDisplayForward?familyId=269&objectId=1376&type=Inhibitors",
+      "note": "Aspirin의 비가역적 작용과 COX-2 아세틸화 효과를 단순 평형 affinity로 해석하지 마세요.",
+      "reference_affinity": null
+    },
+    {
+      "id": "ibuprofen-cox1",
+      "cid": 3672,
+      "accession": "P23219",
+      "category": "documented_interaction",
+      "evidence_url": "https://www.guidetopharmacology.org/GRAC/ObjectDisplayForward?objectId=1375",
+      "note": "입체배치를 특정하지 않은 PubChem의 라세미 ibuprofen 표현입니다. S/R 선택성을 비교하는 입력이 아닙니다.",
+      "reference_affinity": null
+    },
+    {
+      "id": "ibuprofen-cox2",
+      "cid": 3672,
+      "accession": "P35354",
+      "category": "documented_interaction",
+      "evidence_url": "https://www.guidetopharmacology.org/GRAC/ObjectInteractionStructuresDisplayForward?familyId=269&objectId=1376&type=Inhibitors",
+      "note": "입체배치를 특정하지 않은 PubChem의 라세미 ibuprofen 표현입니다. 두 COX 예시의 점수 차이가 선택성 검증을 대신하지 않습니다.",
+      "reference_affinity": null
+    },
+    {
+      "id": "diclofenac-cox1",
+      "cid": 3033,
+      "accession": "P23219",
+      "category": "documented_interaction",
+      "evidence_url": "https://www.guidetopharmacology.org/GRAC/ObjectDisplayForward?objectId=1375",
+      "note": "Diclofenac 중성 자유산을 사용합니다. 나트륨염 입력에서 염을 자동 제거한 것이 아닙니다.",
+      "reference_affinity": null
+    },
+    {
+      "id": "diclofenac-cox2",
+      "cid": 3033,
+      "accession": "P35354",
+      "category": "documented_interaction",
+      "evidence_url": "https://www.guidetopharmacology.org/GRAC/ObjectInteractionStructuresDisplayForward?familyId=269&objectId=1376&type=Inhibitors",
+      "note": "Diclofenac 중성 자유산을 사용합니다. COX-1/2 예시는 표적을 바꾸는 실행 예제입니다.",
+      "reference_affinity": null
+    },
+    {
+      "id": "celecoxib-cox2",
+      "cid": 2662,
+      "accession": "P35354",
+      "category": "documented_interaction",
+      "evidence_url": "https://www.guidetopharmacology.org/GRAC/ObjectInteractionStructuresDisplayForward?familyId=269&objectId=1376&type=Inhibitors",
+      "note": "COX-2 억제제 예시입니다. 단일 모델 점수로 선택성이나 약효를 입증하지 않습니다.",
+      "reference_affinity": null
+    },
+    {
+      "id": "acetazolamide-ca2",
+      "cid": 1986,
+      "accession": "P00918",
+      "category": "documented_interaction",
+      "evidence_url": "https://www.rcsb.org/structure/3HS4",
+      "note": "CA2는 아연을 사용하는 효소입니다. 현재 입력은 서열뿐이며 금속·용매·3D 구조를 직접 입력하지 않습니다.",
+      "reference_affinity": null
+    },
+    {
+      "id": "methazolamide-ca2",
+      "cid": 4100,
+      "accession": "P00918",
+      "category": "documented_interaction",
+      "evidence_url": "https://www.rcsb.org/structure/5C8I",
+      "note": "PubChem CID 4100의 구조 표기를 그대로 사용합니다. CA2 복합체 문헌은 상호작용 근거이며 이 모델의 정답값은 아닙니다.",
+      "reference_affinity": null
+    },
+    {
+      "id": "trimethoprim-ecoli-dhfr",
+      "cid": 5578,
+      "accession": "P0ABQ4",
+      "category": "documented_interaction",
+      "evidence_url": "https://www.rcsb.org/structure/7NAE",
+      "note": "E. coli K-12의 전체 canonical DHFR 서열입니다. 다른 종·내성 변이체와 구분하며 NADPH 효과를 직접 모델링하지 않습니다.",
+      "reference_affinity": null
+    },
+    {
+      "id": "caffeine-a2a",
+      "cid": 2519,
+      "accession": "P29274",
+      "category": "documented_interaction",
+      "evidence_url": "https://www1.rcsb.org/structure/5MZJ",
+      "note": "A2A 수용체 길항제 예시입니다. 문헌의 구조용 변형 construct 대신 전체 canonical 서열을 입력합니다.",
+      "reference_affinity": null
+    },
+    {
+      "id": "theophylline-a2a",
+      "cid": 2153,
+      "accession": "P29274",
+      "category": "documented_interaction",
+      "evidence_url": "https://www.guidetopharmacology.org/GRAC/LigandActivityRangeVisForward?ligandId=413",
+      "note": "A2A 수용체 길항제 예시입니다. 이 예시의 선택은 실험 Ki 또는 모델 성능 보증을 뜻하지 않습니다.",
+      "reference_affinity": null
+    }
+  ]
+}

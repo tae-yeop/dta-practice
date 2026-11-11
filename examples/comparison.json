@@ -1,0 +1,6 @@
+{
+  "smiles": "CC(=O)Oc1ccccc1C(=O)O",
+  "protein_sequence": "MKTAYIAKQRQISFVKSHFSRQDILDLWIYHTQGYFPQ",
+  "models": ["CNN_CNN_BindingDB", "MPNN_CNN_BindingDB"],
+  "device": "cpu"
+}

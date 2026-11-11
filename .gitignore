@@ -1,0 +1,11 @@
+.venv*/
+.env
+.env.*
+!.env.example
+.uv-cache/
+.model-cache/
+.pytest_cache/
+__pycache__/
+*.egg-info/
+runs/
+.taste-skill/

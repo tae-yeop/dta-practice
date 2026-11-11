@@ -1,0 +1,5 @@
+# Separate environment: install torch from the CUDA 12.1 wheel index first.
+# See docs/boltz2.md. The DeepPurpose environment remains unchanged.
+torch==2.5.1+cu121
+boltz==2.2.1
+rdkit==2026.9.1

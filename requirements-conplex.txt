@@ -1,0 +1,9 @@
+# Isolated inference-only environment; upstream code is pinned in the artifact manifest.
+torch==2.5.1
+numpy==1.26.4
+rdkit==2024.9.6
+transformers==4.45.2
+huggingface-hub==0.36.0
+omegaconf==2.3.0
+h5py==3.12.1
+tqdm==4.70.1
