@@ -10,6 +10,6 @@ the skill. Add models only when requested. Keep raw predictions, endpoint
 semantics, and calibration status distinct. Do not replace missing checkpoints
 with randomly initialized weights or substitute mock results for predictions.
 
-Use the project `.venv` for inference and `requirements-runtime.txt` for its
+Use the project `.venv` for inference and `requirements/runtime.txt` for its
 dependencies. Runtime downloads are an explicit setup command; prediction is
 offline. Run `python -m pytest` after changing inference behavior.

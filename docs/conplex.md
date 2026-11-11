@@ -16,7 +16,7 @@
 
 ```powershell
 uv venv .venv-conplex --python 3.10 --cache-dir .uv-cache
-uv pip install --python .venv-conplex/Scripts/python.exe --cache-dir .uv-cache -r requirements-conplex.txt
+uv pip install --python .venv-conplex/Scripts/python.exe --cache-dir .uv-cache -r requirements/models/conplex.txt
 .venv\Scripts\python.exe scripts/setup_conplex.py
 ```
 

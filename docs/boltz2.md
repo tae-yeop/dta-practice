@@ -11,11 +11,11 @@ Windows / NVIDIA용으로 검증하는 환경:
 ```powershell
 uv venv .venv-boltz2 --python 3.12 --cache-dir .uv-cache
 uv pip install --python .venv-boltz2/Scripts/python.exe --cache-dir .uv-cache 'torch==2.5.1+cu121' --index-url https://download.pytorch.org/whl/cu121
-uv pip install --python .venv-boltz2/Scripts/python.exe --cache-dir .uv-cache -r requirements-boltz2.txt
+uv pip install --python .venv-boltz2/Scripts/python.exe --cache-dir .uv-cache -r requirements/models/boltz2.txt
 .venv/Scripts/python.exe scripts/setup_boltz2.py
 ```
 
-다른 Python 환경을 명시하려면 `DTI_BOLTZ_PYTHON`을 설정한다. CUDA가 없는 머신에서 CPU 실행 경로도 제공하지만 매우 느릴 수 있다. 이번 실제 추론 검증은 CUDA에서 수행했다. `device=auto`는 이 adapter의 기본 장치인 CUDA를 선택하며, CUDA가 없다고 조용히 CPU로 바꾸지 않는다. CPU는 명시적으로 선택한다. 설치된 전체 의존성의 스냅샷은 [requirements-boltz2-tested.lock](../requirements-boltz2-tested.lock)에 있다.
+다른 Python 환경을 명시하려면 `DTI_BOLTZ_PYTHON`을 설정한다. CUDA가 없는 머신에서 CPU 실행 경로도 제공하지만 매우 느릴 수 있다. 이번 실제 추론 검증은 CUDA에서 수행했다. `device=auto`는 이 adapter의 기본 장치인 CUDA를 선택하며, CUDA가 없다고 조용히 CPU로 바꾸지 않는다. CPU는 명시적으로 선택한다. 설치된 전체 의존성의 스냅샷은 [requirements/locks/boltz2-tested.lock](../requirements/locks/boltz2-tested.lock)에 있다.
 
 이미 받은 공식 파일이 있다면 아래처럼 가져온다. 원본은 변경하지 않고 프로젝트 캐시에 복사한다.
 

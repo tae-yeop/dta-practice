@@ -10,12 +10,14 @@ Agent → skills/predict-dta/SKILL.md
 
 계산은 `dti_tool`이 담당한다. 스킬은 호출 방법과 해석 원칙을 제공한다. `AGENTS.md`가 프로젝트 스킬의 경로를 안내하므로 CLI로 바로 사용할 수 있다. 글로벌 스킬 목록이나 현재 채팅의 MCP 서버 목록에 자동 등록한 것은 아니다.
 
+설치 파일은 [`requirements/`](requirements/README.md)에 모았다. 공통 추론·웹·MCP는 최상위 파일, 모델 전용 의존성은 `models/`, 검증 환경의 전체 패키지 스냅샷은 `locks/`로 구분한다.
+
 ## 웹앱 실행
 
 프로젝트 폴더에서 실행한다. 기존 추론 환경에 웹 의존성만 추가한다.
 
 ```powershell
-uv pip install --python .venv\Scripts\python.exe --cache-dir .uv-cache -r requirements-web.txt
+uv pip install --python .venv\Scripts\python.exe --cache-dir .uv-cache -r requirements/web.txt
 .venv\Scripts\python.exe scripts/serve_web.py
 ```
 
@@ -82,14 +84,14 @@ uv pip install --python .venv\Scripts\python.exe --cache-dir .uv-cache -r requir
 
 ```powershell
 uv venv .venv --python 3.10 --cache-dir .uv-cache
-uv pip install --python .venv\Scripts\python.exe --cache-dir .uv-cache -r requirements-runtime.txt
+uv pip install --python .venv\Scripts\python.exe --cache-dir .uv-cache -r requirements/runtime.txt
 uv pip install --python .venv\Scripts\python.exe --cache-dir .uv-cache --no-deps DeepPurpose==0.1.5
 .venv\Scripts\python.exe -m dti_tool prepare-model
 .venv\Scripts\python.exe -m dti_tool prepare-model --model MPNN_CNN_BindingDB
 .venv\Scripts\python.exe -m dti_tool status
 ```
 
-DeepPurpose의 전체 의존성에는 이 CNN/MPNN 추론에 쓰지 않는 training/DGL 패키지가 포함되어 있어 최소 추론 의존성을 먼저 설치한다. `requirements-tested.lock`은 MCP와 테스트 도구를 포함한 이번 환경의 전체 패키지 스냅샷이다. 해당 환경을 그대로 복원하려면 `uv pip install --python .venv\Scripts\python.exe --cache-dir .uv-cache --no-deps -r requirements-tested.lock`을 사용할 수 있다. 최소 설치에서는 MCP를 아래 명령으로 추가한다.
+DeepPurpose의 전체 의존성에는 이 CNN/MPNN 추론에 쓰지 않는 training/DGL 패키지가 포함되어 있어 최소 추론 의존성을 먼저 설치한다. `requirements/locks/runtime-tested.lock`은 MCP와 테스트 도구를 포함한 이번 환경의 전체 패키지 스냅샷이다. 해당 환경을 그대로 복원하려면 `uv pip install --python .venv\Scripts\python.exe --cache-dir .uv-cache --no-deps -r requirements/locks/runtime-tested.lock`을 사용할 수 있다. 최소 설치에서는 MCP를 아래 명령으로 추가한다.
 
 체크포인트 원본은 [DeepPurpose 다운로드 매핑](https://github.com/kexinhuang12345/DeepPurpose/blob/master/DeepPurpose/utils.py)에 지정된 [Harvard Dataverse 파일](https://dataverse.harvard.edu/api/access/datafile/4159715)이다. 네트워크를 사용할 수 없는 경우 이미 받은 원본 ZIP을 가져올 수 있다.
 
@@ -147,7 +149,7 @@ else:
 MCP SDK v1 API를 고정한다. 서버는 예측을 별도 subprocess에 위임하여 ML 로그가 MCP stdio를 손상시키지 않게 한다. 외부 네트워크 포트를 열지 않으며 `predict_dta` 하나만 노출한다.
 
 ```powershell
-uv pip install --python .venv\Scripts\python.exe --cache-dir .uv-cache -r requirements-mcp.txt
+uv pip install --python .venv\Scripts\python.exe --cache-dir .uv-cache -r requirements/mcp.txt
 .venv\Scripts\python.exe scripts/serve_mcp.py
 ```
 

@@ -1,4 +1,4 @@
-"""Explicit ConPLex setup. Install requirements-conplex.txt into .venv-conplex first."""
+"""Explicit ConPLex setup. Install requirements/models/conplex.txt into .venv-conplex first."""
 
 import argparse
 import json

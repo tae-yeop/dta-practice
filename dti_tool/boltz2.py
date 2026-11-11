@@ -99,7 +99,7 @@ def _environment():
 def probe_runtime():
     interpreter = runtime_python()
     if not interpreter.is_file():
-        raise ToolError("DEPENDENCY_MISSING", "Create .venv-boltz2 using requirements-boltz2.txt; see docs/boltz2.md.")
+        raise ToolError("DEPENDENCY_MISSING", "Create .venv-boltz2 using requirements/models/boltz2.txt; see docs/boltz2.md.")
     command = [str(interpreter), str(PROJECT / "dti_tool" / "boltz2_worker.py"), "--probe"]
     completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", timeout=120,
                                env=_environment(), creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)

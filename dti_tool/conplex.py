@@ -79,7 +79,7 @@ def check():
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise ToolError("MODEL_INTEGRITY_ERROR", str(exc)) from exc
     if not runtime_python().is_file():
-        raise ToolError("DEPENDENCY_MISSING", "ConPLex runtime is missing. Install requirements-conplex.txt in .venv-conplex or set DTI_CONPLEX_PYTHON.")
+        raise ToolError("DEPENDENCY_MISSING", "ConPLex runtime is missing. Install requirements/models/conplex.txt in .venv-conplex or set DTI_CONPLEX_PYTHON.")
     return root, manifest
 
 

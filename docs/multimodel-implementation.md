@@ -58,7 +58,7 @@ CUDA가 있는 PC에서도 CPU 요청이 올바르게 동작하게 했다.
 모델별 캐시와 SHA-256을 분리하고, 모델 설정·가중치와 실제 사용한
 `DTI.py`, `utils.py`, `encoders.py`, `chemutils.py` 해시를 기록한다.
 추론은 오프라인이며 다운로드는 `prepare-model` 또는 ZIP 가져오기 단계에서만 한다.
-런타임은 기존 `.venv`와 `requirements-runtime.txt`를 사용하며 추가 DGL 패키지는 필요 없다.
+런타임은 기존 `.venv`와 `requirements/runtime.txt`를 사용하며 추가 DGL 패키지는 필요 없다.
 
 ## 공식 가중치 검증
 
