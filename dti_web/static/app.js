@@ -68,6 +68,7 @@ function element(tag, text, className) {
 // Native dialogs keep keyboard focus inside the explanation and restore it on close.
 function openModal(title, nodes) {
   const dialog = $("info-modal");
+  dialog.classList.remove("graph-modal");
   $("modal-title").textContent = title;
   $("modal-body").replaceChildren(...nodes.map(node => node.cloneNode(true)));
   if (!dialog.open) dialog.showModal();
@@ -165,6 +166,82 @@ function renderTraceSummary(run) {
     const step = element("span", undefined, `trace-step tone-${visual.tone}`);
     step.append(eventIcon(visual), element("span", `${label} · ${visual.label}`)); route.append(step);
   }
+  const graphButton = element("button", `${sourceNames[run.source] || run.source} → 호출 그래프`, "call-graph-button");
+  graphButton.type = "button"; graphButton.setAttribute("aria-haspopup", "dialog");
+  graphButton.addEventListener("click", () => showCallGraph(run)); route.append(graphButton);
+}
+let graphEvidence = new Map();
+let graphEdges = [];
+window.addEventListener("resize", () => drawCallEdges(graphEdges));
+function showCallGraph(run) {
+  const graph = element("div", undefined, "call-graph");
+  const viewport = element("div", undefined, "call-graph-viewport");
+  viewport.tabIndex = 0; viewport.setAttribute("role", "region"); viewport.setAttribute("aria-label", "호출 관계 그래프 · 가로로 이동할 수 있습니다");
+  const canvas = element("div", undefined, "call-graph-canvas");
+  const evidence = new Map(), edges = [];
+  const columns = Array.from({length: 5}, () => element("div", undefined, "call-column"));
+  const waiting = {tone: "waiting", icon: "M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0", label: "미호출"};
+  function node(id, column, title, role, events, extra = "", status) {
+    const last = events.at(-1), visual = status || (last ? eventVisual(last.event) : waiting);
+    const button = element("button", undefined, `call-node tone-${visual.tone}`);
+    button.type = "button"; button.dataset.graphNode = id; button.setAttribute("aria-pressed", "false");
+    button.append(element("small", role), element("strong", title));
+    const stateLabel = element("span", undefined, "call-node-state"); stateLabel.append(eventIcon(visual), element("span", visual.label)); button.append(stateLabel);
+    if (extra) button.append(element("small", extra));
+    button.setAttribute("aria-label", `${title} · ${role} · ${visual.label} · 관련 로그 보기`);
+    evidence.set(id, {title, role, events, extra}); columns[column].append(button);
+  }
+  const matching = prefix => run.events.filter(event => event.event.startsWith(`${prefix}.`));
+  const requests = matching("request"), tools = matching("tool"), skill = matching("skill");
+  node("source", 0, sourceNames[run.source] || run.source, "요청 주체 · 기록된 출처", requests);
+  node("workflow", 1, "로컬 워크플로", "실행 조율", run.events.filter(event => /^(request|workflow|run)\./.test(event.event)), run.source === "web" ? "별도 LLM 호출 없음" : "기록된 실행 경로");
+  edges.push(["source", "workflow", requests.length ? "요청" : "요청 경로", !requests.length]);
+  if (skill.length) {
+    node("skill", 1, "predict-dta", "읽은 지침 문서", skill, "호출 주체가 아닌 문서");
+    edges.push(["workflow", "skill", "문서 로드", true]);
+  }
+  node("tool", 2, "predict_dta", "실행 도구", tools);
+  edges.push(["workflow", "tool", tools.length ? "호출" : "호출 전", !tools.length]);
+  const requested = Array.isArray(run.request?.models) ? run.request.models : [run.request?.model || "CNN_CNN_BindingDB"];
+  const names = [...new Set([...requested, ...matching("model").map(event => event.details?.model).filter(Boolean)])];
+  for (const [index, name] of names.entries()) {
+    const events = matching("model").filter(event => event.details?.model === name);
+    node(`model-${index}`, 3, modelMethods[name]?.name || name, "모델 · 순차 실행", events, events.at(-1)?.details?.elapsed_seconds != null ? `${events.at(-1).details.elapsed_seconds.toFixed(2)}초` : "");
+    edges.push(["tool", `model-${index}`, events.length ? "모델 호출" : "선택됨 · 미호출", !events.length]);
+    edges.push([`model-${index}`, "result", "출력", !events.some(event => /\.(completed|failed)$/.test(event.event))]);
+  }
+  node("result", 4, "실행 결과", "원시 결과·오류 보존", matching("run"), "점수의 합산·평균 없음", run.result ? undefined : {...waiting, label: "결과 대기"});
+  canvas.append(...columns); viewport.append(canvas);
+  graph.append(element("p", `${sourceNames[run.source] || run.source} 요청이 로컬 워크플로를 거쳐 도구와 모델로 전달됩니다. 노드를 누르면 근거 로그를 확인할 수 있습니다.`, "graph-intro"), viewport,
+    element("p", "로컬 실행 구조와 이벤트에서 재구성한 관계입니다. 실선: 기록된 호출·출력 · 점선: 문서 참조 또는 미실행 경로. 모델은 순차 실행하며, 스킬 로드는 LLM의 추론 기록이 아닙니다.", "graph-legend"),
+    element("p", `실행 ${run.run_id} · ${date(run.created_at)} · 그래프를 연 시점의 기록`, "graph-meta"), element("div", undefined, "graph-evidence"));
+  graphEvidence = evidence;
+  graphEdges = edges;
+  openModal("누가 무엇을 호출했나요?", [graph]);
+  $("info-modal").classList.add("graph-modal");
+  requestAnimationFrame(() => drawCallEdges(edges));
+  setTimeout(() => { if (graphEdges === edges) drawCallEdges(edges); }, 260);
+}
+function drawCallEdges(edges) {
+  const canvas = document.querySelector("#modal-body .call-graph-canvas"); if (!canvas) return;
+  canvas.querySelector("svg.call-edges")?.remove();
+  const rect = canvas.getBoundingClientRect();
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "call-edges"); svg.setAttribute("aria-hidden", "true"); svg.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
+  for (const [from, to, label, dashed] of edges) {
+    const a = canvas.querySelector(`[data-graph-node="${from}"]`).getBoundingClientRect();
+    const b = canvas.querySelector(`[data-graph-node="${to}"]`).getBoundingClientRect();
+    const vertical = from === "workflow" && to === "skill";
+    const x1 = (vertical ? a.left + a.width / 2 : a.right) - rect.left, y1 = (vertical ? a.bottom : a.top + a.height / 2) - rect.top;
+    const x2 = (vertical ? b.left + b.width / 2 : b.left) - rect.left, y2 = (vertical ? b.top : b.top + b.height / 2) - rect.top;
+    const path = document.createElementNS(svg.namespaceURI, "path");
+    path.setAttribute("d", vertical ? `M${x1},${y1}V${y2}` : `M${x1},${y1}H${(x1+x2)/2}V${y2}H${x2}`);
+    path.setAttribute("class", dashed ? "planned-edge" : "recorded-edge");
+    const title = document.createElementNS(svg.namespaceURI, "title"); title.textContent = label; path.append(title); svg.append(path);
+    const arrow = document.createElementNS(svg.namespaceURI, "path");
+    arrow.setAttribute("d", vertical ? `M${x2-3},${y2-5}l3 5 3-5` : `M${x2-5},${y2-3}l5 3-5 3`); svg.append(arrow);
+  }
+  canvas.prepend(svg);
 }
 function date(value) { return new Date(value).toLocaleString("ko-KR", {month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false}); }
 async function api(path, options) {
@@ -549,6 +626,18 @@ $("prediction-form").addEventListener("submit", async (event) => {
 });
 $("modal-close").addEventListener("click", () => $("info-modal").close());
 $("modal-body").addEventListener("click", event => {
+  const graphNode = event.target.closest("[data-graph-node]");
+  if (graphNode) {
+    const data = graphEvidence.get(graphNode.dataset.graphNode);
+    const pane = $("modal-body").querySelector(".graph-evidence");
+    if (data && pane) {
+      for (const node of $("modal-body").querySelectorAll(".call-node")) node.setAttribute("aria-pressed", String(node === graphNode));
+      pane.replaceChildren(element("h3", `${data.title} · ${data.role}`), element("p", data.extra || "기록된 이벤트를 시간순으로 표시합니다."));
+      if (!data.events.length) pane.append(element("p", "이 노드의 실행 이벤트가 아직 없습니다."));
+      for (const item of data.events) pane.append(element("p", `${time(item.timestamp)} · ${item.event} · ${item.message}`), element("pre", JSON.stringify(item.details, null, 2)));
+      pane.setAttribute("role", "region"); pane.setAttribute("aria-label", `${data.title}의 근거 로그`);
+    }
+  }
   const link = event.target.closest('a[href^="#method-"]');
   if (link) { event.preventDefault(); document.querySelector(`${link.getAttribute("href")} button`)?.click(); }
   if (event.target.closest("#refresh")) refreshHealth();
