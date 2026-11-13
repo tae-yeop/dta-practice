@@ -65,15 +65,59 @@ function element(tag, text, className) {
   if (className) node.className = className;
   return node;
 }
+// Native dialogs keep keyboard focus inside the explanation and restore it on close.
+function openModal(title, nodes) {
+  const dialog = $("info-modal");
+  $("modal-title").textContent = title;
+  $("modal-body").replaceChildren(...nodes.map(node => node.cloneNode(true)));
+  if (!dialog.open) dialog.showModal();
+}
+function modalAction(title, nodes, label = title) {
+  const button = element("button", label, "modal-action");
+  button.type = "button";
+  button.setAttribute("aria-haspopup", "dialog");
+  button.addEventListener("click", () => openModal(title, typeof nodes === "function" ? nodes() : nodes));
+  return button;
+}
+function convertDisclosures(root = document) {
+  for (const detail of root.querySelectorAll("details")) {
+    const summary = detail.querySelector("summary");
+    if (!summary) continue;
+    const wrapper = element("div");
+    for (const attr of detail.attributes) if (attr.name !== "open") wrapper.setAttribute(attr.name, attr.value);
+    wrapper.classList.add("modal-disclosure");
+    // Keep source content addressable for the example picker without displaying it inline.
+    const content = element("div"); content.hidden = true;
+    content.append(...[...detail.childNodes].filter(node => node !== summary));
+    wrapper.append(modalAction(summary.textContent, () => [...content.childNodes]));
+    wrapper.append(content);
+    detail.replaceWith(wrapper);
+  }
+}
+function scoreMeaning(prediction) {
+  if (prediction.scale === "cosine_similarity") return {
+    name: "벡터 간 유사도", endpoint: "약물–단백질 상호작용 점수",
+    text: "약물과 단백질의 특징 벡터가 얼마나 비슷한 방향인지 나타냅니다. 코사인 유사도이며, 농도 단위나 결합 확률이 아닙니다.",
+  };
+  if (prediction.scale === "upstream_log_affinity") return {
+    name: "로그 친화도 · 원시 점수", endpoint: "정확한 실험 지표 미확인",
+    text: "원본 모델이 반환한 로그 척도의 친화도 점수입니다. upstream은 원본 모델에서 온 값이라는 뜻입니다. 이 체크포인트가 Kd·Ki·IC50 중 무엇을 예측하는지와 정확한 변환식이 확인되지 않아 nM 농도나 결합 확률로 환산할 수 없습니다.",
+  };
+  if (/ic50/i.test(`${prediction.scale} ${prediction.endpoint}`)) return {
+    name: "IC50의 상용로그 · µM 기준", endpoint: "IC50 · 50% 억제 농도",
+    text: "IC50는 측정 대상의 활성을 50% 억제하는 데 필요한 농도입니다. 이 출력은 µM 단위의 IC50에 log10을 취한 모델 예측값입니다. 예를 들어 −2는 0.01 µM(10 nM)에 해당합니다. 낮을수록 더 낮은 농도에서 억제한다는 의미이며, Kd와는 다른 지표입니다.",
+  };
+  return {name: prediction.scale || "척도 미확인", endpoint: prediction.endpoint || "예측 대상 미확인", text: "이 출력의 척도와 예측 대상은 원시 결과 JSON에서 확인하세요. 확인되지 않은 단위로 환산하지 않습니다."};
+}
 function methodLink(model, label) {
   const method = modelMethods[model];
   if (!method) return null;
   const link = element("a", label, "method-link");
   link.href = `#${method.id}`;
-  link.addEventListener("click", () => {
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
     const detail = $(method.id);
-    detail.open = true;
-    detail.focus({preventScroll: true});
+    detail.querySelector("button").click();
   });
   return link;
 }
@@ -155,7 +199,7 @@ function renderModelChoices() {
     const text = element("span", undefined, "model-option-text");
     const heading = element("span", undefined, "model-option-heading");
     const ready = item.checkpoint?.status === "ready";
-    heading.append(element("strong", modelLabels[item.model] || item.display_name || item.model),
+    heading.append(element("strong", modelMethods[item.model]?.name || item.display_name || item.model),
       element("span", ready ? "준비됨" : "준비 필요", `model-availability ${ready ? "ready" : ""}`));
     text.append(heading, element("small", inputLimits(item) || item.description || item.model));
     if (!ready) text.append(element("small", item.checkpoint?.message || "모델 준비 상태를 확인하세요.", "model-unavailable"));
@@ -186,7 +230,6 @@ function renderModelResult(result) {
     element("span", statusNames[result.status] || result.status, `pill ${result.status}`));
   box.append(heading);
   const model = result.requested_model || result.model?.model;
-  if (modelMethods[model]) box.append(methodLink(model, `${modelMethods[model].category} · 방법 보기 ↓`));
   if (result.status === "error") {
     const code = result.error.code;
     const [title, resolution] = fixes[code] || ["예측을 완료하지 못했습니다.", "입력과 실행 환경을 확인한 뒤 다시 실행해 주세요."];
@@ -198,12 +241,16 @@ function renderModelResult(result) {
   const prediction = result.prediction || {};
   const isInteractionScore = result.task === "DTI" || prediction.scale === "cosine_similarity" || result.requested_model === "ConPLex_v1_BindingDB";
   const rawValue = prediction.raw_value;
-  box.append(element("p", isInteractionScore ? "DTI interaction score · 원시 출력" : "Affinity score · 원시 출력", "score-label"),
+  box.append(element("p", isInteractionScore ? "약물–단백질 상호작용 점수" : "모델이 예측한 친화도 점수", "score-label"),
     element("div", typeof rawValue === "number" && Number.isFinite(rawValue) ? rawValue.toFixed(4) : "값 없음", "score"));
   const facts = element("dl", undefined, "result-facts");
   const seconds = result.execution?.elapsed_seconds;
-  const rows = [["Scale", prediction.scale || "미확인"], ["Endpoint", prediction.endpoint || "미확인"],
-    ["Conformal interval", result.uncertainty?.status === "not_calibrated" ? "미보정" : result.uncertainty?.status || "미제공"],
+  const meaning = scoreMeaning(prediction);
+  const explanation = element("div", undefined, "score-explanation");
+  explanation.append(element("strong", meaning.name), element("p", meaning.text),
+    element("p", "예측 구간 미보정: 실제 오차를 검증해 만든 신뢰 범위를 아직 제공하지 않습니다. 점수는 실험 측정값이 아닙니다."), element("pre", JSON.stringify(prediction, null, 2)));
+  const rows = [["점수 척도", meaning.name], ["예측 대상", meaning.endpoint],
+    ["예측 구간", result.uncertainty?.status === "not_calibrated" ? "미보정 · 오차 범위 미제공" : result.uncertainty?.status || "미제공"],
     ["실행 장치", result.execution?.device || "미기록"],
     ["실행 시간", typeof seconds === "number" ? `${seconds.toFixed(2)} s` : "미기록"]];
   if (typeof prediction.higher_is_stronger === "boolean") rows.splice(2, 0, ["점수 방향", isInteractionScore
@@ -214,22 +261,28 @@ function renderModelResult(result) {
   for (const [label, value] of rows) {
     const row = element("div"); row.append(element("dt", label), element("dd", value)); facts.append(row);
   }
-  box.append(facts);
-  if (isInteractionScore) box.append(element("p", "상호작용 점수이며 결합 확률이나 nM 값이 아닙니다.", "result-warning"));
-  if (typeof probability === "number") box.append(element("p", "Binder 확률은 이 모델의 출력입니다. 이 프로젝트에서 독립적인 확률 보정을 검증하지 않았으며, affinity 예측 구간과 다릅니다.", "result-warning"));
+  explanation.append(facts);
+  if (modelMethods[model]) {
+    const method = modelMethods[model];
+    explanation.append(element("h3", "예측 방법"), element("p", method.explanation), element("p", method.limit));
+  }
+  if (isInteractionScore) explanation.append(element("p", "상호작용 점수이며 결합 확률이나 nM 값이 아닙니다.", "result-warning"));
+  if (typeof probability === "number") explanation.append(element("p", "Binder 확률은 이 모델의 출력입니다. 이 프로젝트에서 독립적인 확률 보정을 검증하지 않았으며, affinity 예측 구간과 다릅니다.", "result-warning"));
+  box.append(modalAction(`${modelMethods[model]?.name || model} · 점수 해석`, [explanation], "점수 해석"));
+  box.append(element("span", `${result.execution?.device || "장치 미기록"} · ${typeof seconds === "number" ? `${seconds.toFixed(1)}초` : "시간 미기록"}`, "execution-inline"));
   const warnings = result.quality?.warnings || [];
   if (warnings.length) {
-    const details = element("details", undefined, "result-details");
-    details.append(element("summary", `해석·입력 주의점 (${warnings.length})`));
+    const details = element("section", undefined, "result-details");
+    details.append(element("h3", `해석·입력 주의점 (${warnings.length})`));
     const list = element("ul"); for (const warning of warnings) list.append(element("li", String(warning)));
-    details.append(list); box.append(details);
+    details.append(list); explanation.append(details);
   }
   const structure = result.quality?.structure_confidence || result.quality?.structural_confidence;
   if (structure) {
-    const details = element("details", undefined, "result-details");
-    details.append(element("summary", "구조 예측 품질"), element("p", "구조 confidence는 결합 확률이나 affinity의 예측 구간이 아닙니다."),
+    const details = element("section", undefined, "result-details");
+    details.append(element("h3", "구조 예측 품질"), element("p", "구조 confidence는 결합 확률이나 affinity의 예측 구간이 아닙니다."),
       element("pre", JSON.stringify(structure, null, 2)));
-    box.append(details);
+    explanation.append(details);
   }
   return box;
 }
@@ -470,6 +523,42 @@ $("prediction-form").addEventListener("submit", async (event) => {
     await selectRun(run.run_id); await poll();
   } catch (error) { setBusy(false); note(error.message, true); }
 });
-renderMethods(); countInputs(); loadExamples(); refreshHealth(); poll();
+$("modal-close").addEventListener("click", () => $("info-modal").close());
+$("modal-body").addEventListener("click", event => {
+  const link = event.target.closest('a[href^="#method-"]');
+  if (link) { event.preventDefault(); document.querySelector(`${link.getAttribute("href")} button`)?.click(); }
+  if (event.target.closest("#refresh")) refreshHealth();
+});
+$("info-modal").addEventListener("click", event => {
+  if (event.target !== $("info-modal")) return;
+  const rect = event.target.getBoundingClientRect();
+  if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) event.target.close();
+});
+$("info-modal").addEventListener("close", () => { document.body.classList.remove("modal-open"); });
+new MutationObserver(() => {
+  convertDisclosures();
+  document.body.classList.toggle("modal-open", $("info-modal").open);
+}).observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ["open"]});
+renderMethods(); convertDisclosures(); countInputs(); loadExamples(); refreshHealth(); poll();
+const tools = element("nav", undefined, "workbench-tools");
+tools.setAttribute("aria-label", "워크벤치 안내");
+document.querySelector(".bottom-row").hidden = true;
+for (const [selector, title] of [["#model-methods", "모델별 예측 방법"], [".readiness", "모델 준비 상태"]]) {
+  const panel = document.querySelector(selector);
+  panel.hidden = true;
+  tools.append(modalAction(title, () => [...panel.childNodes]));
+}
+tools.append(modalAction("에이전트 사용 안내", () => [...document.querySelector(".agent-help > div[hidden]").childNodes]));
+document.querySelector(".title-row").append(tools);
+const inputHelp = element("div");
+inputHelp.append(modalAction("입력·실행 안내", () => {
+  const nodes = [...document.querySelectorAll("#smiles-hint, #protein-hint, #model-selection-hint, #device-hint")].map(node => element("p", node.textContent));
+  for (const item of modelCatalog.values()) nodes.push(element("p", `${modelMethods[item.model]?.name || item.model}: ${inputLimits(item)}`));
+  return nodes;
+}));
+document.querySelector(".input-panel .section-heading").append(inputHelp);
+document.querySelector('a[href="#model-methods"]').addEventListener("click", event => {
+  event.preventDefault(); openModal("모델별 예측 방법", [...$("model-methods").childNodes]);
+});
 setInterval(poll, 1200);
 setInterval(refreshHealth, 30000);

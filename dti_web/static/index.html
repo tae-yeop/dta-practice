@@ -23,7 +23,7 @@
     <div class="sidebar-foot"><strong>여러 모델의 예측 근거</strong><span>서열 · 그래프 · 3D 구조</span><span>모델별 점수와 실행 기록</span></div>
   </aside>
   <main class="sheet">
-    <div class="title-row"><div><h1>결합 친화도 예측</h1><p>분자와 단백질 한 쌍의 예측값, 그리고 실행 근거.</p></div><span class="version">Prototype 03</span></div>
+    <div class="title-row"><div><h1>결합 친화도 예측</h1><p>분자와 단백질 한 쌍에서, 점수의 의미까지.</p></div><span class="version">로컬 분석 워크벤치</span></div>
     <div class="workbench">
       <section class="input-panel" aria-labelledby="input-heading">
         <div class="section-heading"><h2 id="input-heading">예측 입력</h2></div>
@@ -84,8 +84,13 @@
       <div class="readiness"><div class="section-heading"><h2>모델 준비 상태</h2><button id="refresh" class="text-button" type="button">새로고침</button></div><div id="model-state">로컬 체크포인트를 확인하고 있습니다.</div><div id="setup-command" hidden></div></div>
       <details class="agent-help"><summary>에이전트에게 요청하려면</summary><p>이 프로젝트를 연 에이전트에게 SMILES와 단백질 서열을 전달하고 “predict-dta 스킬로 예측해줘”라고 요청하세요. 실행 결과와 로그가 이 화면에도 표시됩니다.</p><p>웹 버튼은 같은 도구를 실행하는 로컬 워크플로입니다. 별도 LLM 호출은 없으며, 로그의 스킬 로드는 실제 문서 로드를 뜻합니다.</p></details>
     </section>
-    <footer class="page-footer"><span>모델별 DTA·DTI 출력 · 통합 점수 미제공</span><span>Conformal prediction: 미보정</span></footer>
+    <footer class="page-footer"><span>모델별 DTA·DTI 출력 · 통합 점수 미제공</span><span>예측 구간 미보정 · 검증된 오차 범위 미제공</span></footer>
   </main>
+  <dialog id="info-modal" class="info-modal" aria-labelledby="modal-title">
+    <div class="modal-heading"><h2 id="modal-title">상세 설명</h2><button id="modal-close" class="modal-close" type="button" autofocus aria-label="설명 닫기">닫기 ×</button></div>
+    <div id="modal-body" class="modal-body"></div>
+    <div class="modal-footer">Esc 키 또는 바깥 영역을 눌러 닫을 수 있습니다.</div>
+  </dialog>
   <noscript>이 앱의 입력과 실행 로그를 사용하려면 JavaScript를 활성화하세요.</noscript>
 </body>
 </html>
