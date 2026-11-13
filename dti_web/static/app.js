@@ -173,6 +173,12 @@ function renderTraceSummary(run) {
 let graphEvidence = new Map();
 let graphEdges = [];
 window.addEventListener("resize", () => drawCallEdges(graphEdges));
+function runLabel(run) {
+  const smiles = run.request?.smiles?.trim();
+  const protein = run.request?.protein_sequence?.replace(/\s/g, "").toUpperCase();
+  const example = [...exampleLibrary.values()].find(item => item.input.smiles === smiles && item.input.protein_sequence.replace(/\s/g, "").toUpperCase() === protein);
+  return example ? example.label : `직접 입력${protein ? ` · ${protein.length} aa` : ""}`;
+}
 function showCallGraph(run) {
   const graph = element("div", undefined, "call-graph");
   const viewport = element("div", undefined, "call-graph-viewport");
@@ -193,11 +199,11 @@ function showCallGraph(run) {
   }
   const matching = prefix => run.events.filter(event => event.event.startsWith(`${prefix}.`));
   const requests = matching("request"), tools = matching("tool"), skill = matching("skill");
-  node("source", 0, sourceNames[run.source] || run.source, "요청 주체 · 기록된 출처", requests);
-  node("workflow", 1, "로컬 워크플로", "실행 조율", run.events.filter(event => /^(request|workflow|run)\./.test(event.event)), run.source === "web" ? "별도 LLM 호출 없음" : "기록된 실행 경로");
+  node("source", 0, sourceNames[run.source] || run.source, "요청자", requests);
+  node("workflow", 1, "로컬 워크플로", "실행 조율", run.events.filter(event => /^(request|workflow|run)\./.test(event.event)));
   edges.push(["source", "workflow", requests.length ? "요청" : "요청 경로", !requests.length]);
   if (skill.length) {
-    node("skill", 1, "predict-dta", "읽은 지침 문서", skill, "호출 주체가 아닌 문서");
+    node("skill", 1, "predict-dta", "참조 지침", skill);
     edges.push(["workflow", "skill", "문서 로드", true]);
   }
   node("tool", 2, "predict_dta", "실행 도구", tools);
@@ -210,14 +216,15 @@ function showCallGraph(run) {
     edges.push(["tool", `model-${index}`, events.length ? "모델 호출" : "선택됨 · 미호출", !events.length]);
     edges.push([`model-${index}`, "result", "출력", !events.some(event => /\.(completed|failed)$/.test(event.event))]);
   }
-  node("result", 4, "실행 결과", "원시 결과·오류 보존", matching("run"), "점수의 합산·평균 없음", run.result ? undefined : {...waiting, label: "결과 대기"});
+  node("result", 4, "예측 결과", "결과", matching("run"), run.result?.summary ? `${run.result.summary.succeeded}개 성공 · ${run.result.summary.failed}개 실패` : "", run.result ? undefined : {...waiting, label: "결과 대기"});
   canvas.append(...columns); viewport.append(canvas);
-  graph.append(element("p", `${sourceNames[run.source] || run.source} 요청이 로컬 워크플로를 거쳐 도구와 모델로 전달됩니다. 노드를 누르면 근거 로그를 확인할 수 있습니다.`, "graph-intro"), viewport,
-    element("p", "로컬 실행 구조와 이벤트에서 재구성한 관계입니다. 실선: 기록된 호출·출력 · 점선: 문서 참조 또는 미실행 경로. 모델은 순차 실행하며, 스킬 로드는 LLM의 추론 기록이 아닙니다.", "graph-legend"),
-    element("p", `실행 ${run.run_id} · ${date(run.created_at)} · 그래프를 연 시점의 기록`, "graph-meta"), element("div", undefined, "graph-evidence"));
+  const legend = element("div", undefined, "graph-legend");
+  legend.append(element("span", "호출", "legend-call"), element("span", "참조·대기", "legend-reference"), element("span", "모델은 순차 실행"));
+  graph.append(element("p", `${runLabel(run)} · ${date(run.created_at)} · 모델 ${names.length}개 · ${statusNames[run.status] || run.status}`, "graph-meta"), viewport,
+    legend, element("p", "노드를 선택하면 상세 로그를 볼 수 있습니다.", "graph-intro"), element("div", undefined, "graph-evidence"));
   graphEvidence = evidence;
   graphEdges = edges;
-  openModal("누가 무엇을 호출했나요?", [graph]);
+  openModal("호출 흐름", [graph]);
   $("info-modal").classList.add("graph-modal");
   requestAnimationFrame(() => drawCallEdges(edges));
   setTimeout(() => { if (graphEdges === edges) drawCallEdges(edges); }, 260);
@@ -400,7 +407,7 @@ function showRun(run) {
   const badge = $("result-status");
   badge.textContent = statusNames[run.status] || run.status;
   badge.className = `pill ${run.status}`;
-  $("run-meta").textContent = `${sourceNames[run.source] || run.source} · ${run.run_id.slice(0, 8)} · ${date(run.created_at)}`;
+  $("run-meta").textContent = `${runLabel(run)} · ${date(run.created_at)} · ${sourceNames[run.source] || run.source}`;
   const body = $("result-content");
   body.replaceChildren();
   const result = run.result;
