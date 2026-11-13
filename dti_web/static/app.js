@@ -139,6 +139,33 @@ function renderMethods() {
   }
 }
 function time(value) { return new Date(value).toLocaleTimeString("ko-KR", {hour12: false}); }
+function eventVisual(name) {
+  if (name.endsWith("failed")) return {tone: "failed", icon: "M6 6l12 12M18 6L6 18", label: "실패"};
+  if (name.endsWith("partial")) return {tone: "partial", icon: "M12 8v5m0 3h.01M12 3L2 21h20Z", label: "일부 완료"};
+  if (name.endsWith("completed")) return {tone: "completed", icon: "M5 12l4 4L19 6", label: "완료"};
+  if (name.endsWith("started")) return {tone: "started", icon: "M8 5l11 7-11 7Z", label: "시작"};
+  if (name === "skill.loaded") return {tone: "loaded", icon: "M4 4h6l2 2 2-2h6v15h-6l-2 2-2-2H4ZM12 6v15", label: "스킬 로드"};
+  return {tone: "received", icon: "M12 3v12m-5-5 5 5 5-5M4 15v6h16v-6", label: "요청 접수"};
+}
+function eventIcon(visual) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  for (const [key, value] of Object.entries({viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.8", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true", class: "event-icon"})) svg.setAttribute(key, value);
+  const path = document.createElementNS(svg.namespaceURI, "path"); path.setAttribute("d", visual.icon); svg.append(path);
+  return svg;
+}
+function renderTraceSummary(run) {
+  const route = document.querySelector(".trace-route"); route.replaceChildren();
+  document.querySelector(".trace-panel .section-heading").insertBefore(route, $("download-events"));
+  route.classList.add("trace-progress"); route.setAttribute("aria-label", "실행 단계별 상태");
+  const steps = [["요청", "request"], ...(run.use_skill ? [["스킬", "skill"]] : []), ["예측 도구", "tool"], ["결과", "run"]];
+  for (const [label, prefix] of steps) {
+    const events = run.events.filter(event => event.event.startsWith(`${prefix}.`));
+    const last = events.at(-1);
+    const visual = last ? eventVisual(last.event) : {tone: "waiting", icon: "M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0", label: "대기"};
+    const step = element("span", undefined, `trace-step tone-${visual.tone}`);
+    step.append(eventIcon(visual), element("span", `${label} · ${visual.label}`)); route.append(step);
+  }
+}
 function date(value) { return new Date(value).toLocaleString("ko-KR", {month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false}); }
 async function api(path, options) {
   const response = await fetch(path, options);
@@ -326,22 +353,18 @@ function showRun(run) {
   body.append(inputs);
   setDownload("download-result", run, "result", Boolean(result));
   setDownload("download-events", run, "events", true);
-  const route = document.querySelector(".trace-route");
-  route.replaceChildren();
-  const steps = [sourceNames[run.source] || run.source];
-  if (run.use_skill) steps.push("Skill · predict-dta");
-  steps.push("Tool · predict_dta", "결과");
-  steps.forEach((step, index) => {
-    if (index) route.append(element("span", "→"));
-    route.append(element("span", step));
-  });
-  $("event-count").textContent = `${run.events.length}개 이벤트`;
+  renderTraceSummary(run);
+  $("event-count").textContent = `${run.events.length}개 · 최신순`;
   const list = $("events");
   list.replaceChildren();
-  for (const event of run.events) {
-    const row = element("div", undefined, `event ${event.event.endsWith("failed") ? "error" : ""}`);
+  for (const event of [...run.events].reverse()) {
+    const visual = eventVisual(event.event);
+    const row = element("div", undefined, `event tone-${visual.tone} ${event.event.endsWith("failed") ? "error" : ""}`);
     const stamp = element("time", time(event.timestamp)); stamp.dateTime = event.timestamp;
-    const message = element("p", event.message);
+    const modelName = modelMethods[event.details?.model]?.name || event.details?.model;
+    const modelMessage = modelName && event.event.startsWith("model.")
+      ? `${modelName} · ${visual.label}${event.event.endsWith("started") ? " — 예측을 계산하고 있습니다." : ""}` : event.message;
+    const message = element("p", modelMessage);
     const errorCode = event.details?.error_code;
     if (event.event.endsWith("failed") && errorCode) {
       const help = fixes[errorCode];
@@ -349,10 +372,11 @@ function showRun(run) {
       if (help) message.append(element("br"), document.createTextNode(`${help[0]} ${help[1]}`));
       else if (event.details.error_message) message.append(element("br"), document.createTextNode(event.details.error_message));
     }
-    row.append(stamp, element("span", event.event, "event-name"), message);
-    if (Object.keys(event.details || {}).length) {
-      const detail = element("details"); detail.append(element("summary", "세부 정보"), element("pre", JSON.stringify(event.details, null, 2))); row.append(detail);
-    }
+    const identity = element("span", undefined, "event-identity");
+    const component = {model: "모델", tool: "도구", run: "실행", worker: "작업", workflow: "워크플로"}[event.event.split(".")[0]];
+    identity.append(eventIcon(visual), element("span", component ? `${component} ${visual.label}` : visual.label, "event-name"));
+    identity.title = event.event;
+    row.append(stamp, identity, message, modalAction(`${event.event} · ${time(event.timestamp)}`, [element("p", event.message), element("pre", JSON.stringify(event, null, 2))], "상세"));
     list.append(row);
   }
 }
