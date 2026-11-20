@@ -84,6 +84,10 @@ function renderSpecimen() {
   $("view-protein").setAttribute("aria-pressed", String(flow.view === "protein"));
   $("view-drug").setAttribute("aria-pressed", String(flow.view === "compound"));
   $("preview-profile").disabled = !profile;
+  $("preview-profile-label").textContent = profile?.status === "error" ? "입력 오류 상세" : "구조·프로파일 상세";
+  const ref = profile?.protein?.reference_structures?.records?.[0];
+  $("preview-profile-summary").textContent = [profile?.compound?.formula,
+    profile?.protein && profile.protein.length + " aa", ref && "PDB " + ref.pdb_id].filter(Boolean).join(" · ");
   if (!profile) {
     body.append(element("p", flow.request ? "입력 정보를 확인하고 있습니다…" : "화합물과 서열을 입력하거나 예시를 선택하세요.", "specimen-empty"));
     return;
@@ -91,7 +95,6 @@ function renderSpecimen() {
   const showProtein = flow.view === "protein";
   const entity = showProtein ? profile.protein : profile.compound;
   const match = profile.catalog?.[showProtein ? "protein" : "compound"]?.matches?.[0];
-  const ref = profile.protein?.reference_structures?.records?.[0];
   const label = showProtein ? match?.name || "입력 단백질" : match?.name || "입력 화합물";
   const picture = element("div", undefined, "specimen-image");
   const img = element("img");
@@ -116,7 +119,6 @@ function renderSpecimen() {
     source.href = ref.source_url; source.target = "_blank"; source.rel = "noopener noreferrer"; picture.append(source);
   }
   body.append(picture, meta);
-  $("preview-profile").textContent = entity ? "구조·프로파일 상세" : "입력 오류 상세";
 }
 
 function updateProfileStatus(message, isError = false) {
