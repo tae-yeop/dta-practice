@@ -2,7 +2,7 @@
 
 저장소 구조·로컬 산출물 보관 정책·작업별 커밋 방법은 [저장소 관리 안내](docs/repository-guide.md)를 참고하세요.
 
-웹 UI는 입력과 모델별 요약 결과를 함께 보여줍니다. 점수의 척도·원시 출력·주의점은 결과의 **점수 해석** 버튼에서, 모델 비교·준비 상태·입력 안내는 각각의 모달에서 확인합니다.
+웹 워크벤치는 **입력 프로파일 → 모델 선택 → 실행 추적 → 결과 해석** 순서로 사용한다. **전체 분석 설계**에서 현재 사용 가능한 기능과 설계 단계에 있는 신뢰도 검증·융합·보정의 위치를 확인할 수 있다.
 
 SMILES와 단백질 서열을 받는 **예측 도구**, 이를 사용하는 **에이전트 스킬**, 결과와 실행 로그를 확인하는 **로컬 웹앱**이다. CNN·MPNN DTA, ConPLex DTI, Boltz-2 구조·affinity 모델을 개별 실행하거나 비교한다. 네 모델 모두 공식 가중치로 실제 추론을 확인했다. [4모델 구현·검증 기록](docs/expanded-models.md).
 
@@ -18,7 +18,7 @@ Agent → skills/predict-dta/SKILL.md
 
 ## 웹앱 실행
 
-**입력 프로파일** 버튼으로 예측 전에 분자·서열의 정체와 각 모델의 입력 조건을 확인할 수 있다. Python과 MCP에서는 `profile_input`, CLI에서는 `.venv\Scripts\python.exe -m dti_tool profile --input examples/request.json`으로 같은 JSON을 받는다. 예측 실행 시점의 프로파일은 `runs/predictions/<run_id>/input-profile.json`에 저장된다. [입력 프로파일 필드와 근거 자료 연결 방법](docs/input-profiler.md)
+**입력 프로파일** 단계에서 분자·서열과 구조 미리보기를 확인한다. **구조·프로파일 상세**를 열면 분자 특성, 회전 가능한 3D 구조, 모델별 입력 조건과 전체 JSON을 볼 수 있다. Python과 MCP에서는 `profile_input`, CLI에서는 `.venv\Scripts\python.exe -m dti_tool profile --input examples/request.json`으로 같은 JSON을 받는다. 예측 실행 시점의 프로파일은 `runs/predictions/<run_id>/input-profile.json`에 저장된다. [입력 프로파일 필드와 근거 자료 연결 방법](docs/input-profiler.md)
 
 프로젝트 폴더에서 실행한다. 기존 추론 환경에 웹 의존성만 추가한다.
 
@@ -29,9 +29,9 @@ uv pip install --python .venv\Scripts\python.exe --cache-dir .uv-cache -r requir
 
 브라우저에서 **http://127.0.0.1:8765** 를 연다. `--port 8766`으로 포트를 바꿀 수 있다. 서버는 로컬 루프백 주소에만 바인딩한다.
 
-- SMILES와 Protein sequence를 넣고 원하는 모델을 체크한 뒤 **예측 실행**을 누른다. CNN·MPNN만 기본 선택하며 ConPLex와 Boltz-2는 따로 선택한다. 장치 기본값 `자동`은 Boltz-2에는 CUDA, 다른 모델에는 CPU를 사용한다.
-- **예시 입력 불러오기**에서 항목을 선택하면 공개 출처의 SMILES·전체 서열이 즉시 입력된다. 별도 적용 버튼은 없다. 직접 두 값을 입력해도 된다. 약물 9종·단백질 5종의 12개 예시와 출처는 [예시 안내](examples/README.md)에 있다.
-- 결과에는 원시 점수·단위 해석 범위·보정 상태를 표시한다. 실패 시 점수 대신 실제 오류를 표시한다.
+- 처음 열면 Aspirin과 PTGS2 / COX-2 예시의 입력 프로파일을 표시한다. **예시 선택**에서 다른 쌍을 고르거나 **새 분석**으로 빈 입력을 열 수 있다. 약물 9종·단백질 5종의 12개 예시와 출처는 [예시 안내](examples/README.md)에 있다.
+- **모델 선택으로**를 누르면 모델별 입력 조건, 실행 순서와 장치를 확인할 수 있다. **예측 실행**을 눌러야 추론을 시작한다. CNN·MPNN이 기본 선택되며 ConPLex와 Boltz-2는 따로 선택한다. 장치 기본값 `자동`은 Boltz-2에는 CUDA, 다른 모델에는 CPU를 사용한다.
+- **결과 해석**에는 모델별 점수와 오류를 표시한다. **점수 해석**을 누르면 점수의 척도, 예측 대상, 보정 상태, 원시 출력을 볼 수 있다.
 - 실행 로그에 `skill.loaded`, `tool.started`, `tool.completed` / `tool.partial` / `tool.failed`가 시간순으로 나타난다. 비교 시 각 모델이 시작·종료할 때 `model.started`, `model.completed` / `model.failed`를 바로 기록한다. 스킬 파일 SHA-256과 실행 ID도 남긴다.
 - 최근 실행 선택, 요청 입력 확인, 결과 JSON·로그 JSONL 다운로드를 지원한다. 새 실행은 약 1.2초 간격으로 갱신한다.
 - 웹을 재시작해도 이전 실행 기록이 남는다. 원본 입력과 결과는 이 컴퓨터의 `runs/predictions/`에 저장한다.
