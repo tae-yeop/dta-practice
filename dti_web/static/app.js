@@ -1,7 +1,7 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-const state = {selected: null, newest: null, initialized: false, busy: false, polling: false, signature: "", historySignature: ""};
+const state = {selected: null, submitted: null, busy: false, polling: false, signature: "", historySignature: ""};
 const exampleLibrary = new Map();
 const modelCatalog = new Map();
 const defaultModels = ["CNN_CNN_BindingDB", "MPNN_CNN_BindingDB"];
@@ -175,10 +175,16 @@ let graphEvidence = new Map();
 let graphEdges = [];
 window.addEventListener("resize", () => drawCallEdges(graphEdges));
 function runLabel(run) {
-  const smiles = run.request?.smiles?.trim();
-  const protein = run.request?.protein_sequence?.replace(/\s/g, "").toUpperCase();
+  const request = run.request || {};
+  const smiles = typeof request.smiles === "string" ? request.smiles.trim() : "";
+  const protein = typeof request.protein_sequence === "string" ? request.protein_sequence.replace(/\s/g, "").toUpperCase() : "";
   const example = [...exampleLibrary.values()].find(item => item.input.smiles === smiles && item.input.protein_sequence.replace(/\s/g, "").toUpperCase() === protein);
   return example ? example.label : `직접 입력${protein ? ` · ${protein.length} aa` : ""}`;
+}
+function requestedModelNames(run) {
+  const request = run.request || {};
+  const names = Array.isArray(request.models) ? request.models : [request.model ?? request.models ?? "CNN_CNN_BindingDB"];
+  return names.filter(name => typeof name === "string");
 }
 function showCallGraph(run) {
   const graph = element("div", undefined, "call-graph");
@@ -213,7 +219,7 @@ function showCallGraph(run) {
     edges.push(["workflow", "profile", "프로파일 생성", false]);
   }
   edges.push(["workflow", "tool", tools.length ? "호출" : "호출 전", !tools.length]);
-  const requested = Array.isArray(run.request?.models) ? run.request.models : [run.request?.model || "CNN_CNN_BindingDB"];
+  const requested = requestedModelNames(run);
   const names = [...new Set([...requested, ...matching("model").map(event => event.details?.model).filter(Boolean)])];
   for (const [index, name] of names.entries()) {
     const events = matching("model").filter(event => event.details?.model === name);
@@ -308,19 +314,11 @@ async function showProfile(path, options, complexUrl) {
   try {
     const profile = await api(path, options);
     if (!pending.isConnected || !$("info-modal").open) return;
-    const url = URL.createObjectURL(new Blob([JSON.stringify(profile, null, 2)], {type: "application/json"}));
-    const link = element("a", "전체 프로파일 JSON 저장", "download");
-    link.href = url; link.download = "input-profile.json";
-    $("info-modal").addEventListener("close", () => URL.revokeObjectURL(url), {once: true});
-    renderInputProfile(profile, link, complexUrl);
+    openProfileSnapshot(profile, complexUrl);
   } catch (error) {
     if (pending.isConnected) pending.textContent = "프로파일을 열 수 없습니다. " + error.message;
   }
 }
-$("preview-profile").addEventListener("click", () => showProfile("/api/profile", {
-  method: "POST", headers: {"Content-Type": "application/json"},
-  body: JSON.stringify({smiles: $("smiles").value, protein_sequence: $("protein").value}),
-}));
 function countInputs() {
   const smilesLength = $("smiles").value.trim().length;
   const proteinLength = $("protein").value.replace(/\s/g, "").length;
@@ -369,19 +367,19 @@ function renderModelChoices() {
     checkbox.checked = chosenModels.has(item.model); checkbox.defaultChecked = defaultModels.includes(item.model);
     checkbox.addEventListener("change", () => {
       if (checkbox.checked) chosenModels.add(item.model); else chosenModels.delete(item.model);
-      countInputs();
+      clearRunView(); countInputs(); renderPlan();
     });
     const text = element("span", undefined, "model-option-text");
     const heading = element("span", undefined, "model-option-heading");
     const ready = item.checkpoint?.status === "ready";
     heading.append(element("strong", modelMethods[item.model]?.name || item.display_name || item.model),
       element("span", ready ? "준비됨" : "준비 필요", `model-availability ${ready ? "ready" : ""}`));
-    text.append(heading, element("small", inputLimits(item) || item.description || item.model));
+    text.append(heading, element("small", item.description || inputLimits(item)));
     if (!ready) text.append(element("small", item.checkpoint?.message || "모델 준비 상태를 확인하세요.", "model-unavailable"));
     row.append(checkbox, text); list.append(row);
   }
   if (!modelCatalog.size) list.append(element("p", "사용 가능한 모델 목록이 없습니다.", "field-hint"));
-  countInputs();
+  countInputs(); renderPlan();
 }
 function note(message, error = false) {
   $("form-note").textContent = message;
@@ -401,10 +399,10 @@ function setDownload(id, run, kind, enabled) {
 function renderModelResult(result, runId) {
   const box = element("section", undefined, "model-result");
   const heading = element("div", undefined, "model-result-heading");
-  heading.append(element("code", result.requested_model || result.model?.model || "CNN_CNN_BindingDB"),
+  const model = result.requested_model || result.model?.model || "CNN_CNN_BindingDB";
+  heading.append(element("strong", modelMethods[model]?.name || model),
     element("span", statusNames[result.status] || result.status, `pill ${result.status}`));
   box.append(heading);
-  const model = result.requested_model || result.model?.model;
   if (result.status === "error") {
     const code = result.error.code;
     const [title, resolution] = fixes[code] || ["예측을 완료하지 못했습니다.", "입력과 실행 환경을 확인한 뒤 다시 실행해 주세요."];
@@ -468,12 +466,14 @@ function renderModelResult(result, runId) {
   return box;
 }
 function showRun(run) {
+  if (flow.run?.run_id === run.run_id && (flow.run.events.length > run.events.length || (flow.run.result && !run.result))) return;
   const elapsed = Math.max(0, Math.floor((Date.now() - new Date(run.started_at || run.created_at).getTime()) / 1000));
   const duration = $("run-duration");
   if (duration) duration.textContent = `경과 ${Math.floor(elapsed / 60)}분 ${elapsed % 60}초 · 모델별 로그를 확인하세요.`;
   const signature = `${run.run_id}:${run.status}:${run.events.length}:${Boolean(run.result)}`;
   if (signature === state.signature) return;
-  state.signature = signature;
+  state.signature = signature; flow.run = run; renderExecution();
+  if (["execution", "results"].includes(flow.stage)) goToStage(flow.stage, false);
   const badge = $("result-status");
   badge.textContent = statusNames[run.status] || run.status;
   badge.className = `pill ${run.status}`;
@@ -488,8 +488,9 @@ function showRun(run) {
     body.append(box);
   } else if (Array.isArray(result.results)) {
     body.append(element("p", `${result.summary.succeeded}개 성공 · ${result.summary.failed}개 실패`, "comparison-summary"));
-    for (const item of result.results) body.append(renderModelResult(item, run.run_id));
-    body.append(element("p", "모델마다 출력의 의미와 척도가 다릅니다. 원시 점수를 평균하거나 하나의 결합 확률로 합치지 않습니다. Conformal 구간은 아직 보정되지 않았습니다.", "result-warning"));
+    const grid = element("div", undefined, "result-grid");
+    for (const item of result.results) grid.append(renderModelResult(item, run.run_id));
+    body.append(grid, element("p", "각 점수는 해당 모델의 척도로 표시됩니다. 예측 구간은 미보정 상태입니다.", "result-warning"));
   } else if (result.status === "error") {
     const code = result.error.code;
     const [title, resolution] = fixes[code] || ["예측을 완료하지 못했습니다.", "입력과 실행 환경을 확인한 뒤 다시 실행해 주세요."];
@@ -497,12 +498,12 @@ function showRun(run) {
     box.append(element("code", result.requested_model || "predict_dta"), element("code", code), element("h3", title), element("p", result.error.message), element("p", resolution, "resolution"));
     body.append(box);
   } else {
-    body.append(renderModelResult(result, run.run_id), element("p", "모델의 출력과 해당 척도를 함께 확인하세요. 실험 측정값이 아니며, conformal 예측 구간은 아직 보정되지 않았습니다.", "result-warning"));
+    body.append(renderModelResult(result, run.run_id), element("p", "모델 예측값 · 예측 구간 미보정", "result-warning"));
   }
   const inputs = element("details", undefined, "input-receipt");
   inputs.append(element("summary", "이 실행의 입력 확인"));
   const request = run.request || {};
-  const requestedModels = Array.isArray(request.models) ? request.models : [request.model || request.models || "CNN_CNN_BindingDB"];
+  const requestedModels = requestedModelNames(run);
   inputs.append(element("pre", `Models\n${requestedModels.join(", ")}\n\nDevice\n${request.device || "cpu"}\n\nSMILES\n${request.smiles ?? ""}\n\nProtein sequence\n${request.protein_sequence ?? ""}`));
   body.append(inputs);
   if (run.events.some(event => event.component === "profiler")) {
@@ -546,22 +547,11 @@ function renderHistory(runs) {
   const signature = JSON.stringify(runs.map(r => [r.run_id, r.status])) + state.selected;
   if (signature === state.historySignature) return;
   state.historySignature = signature;
-  const history = $("history"); history.replaceChildren();
-  if (!runs.length) history.append(element("p", "아직 실행 기록이 없습니다.", "muted"));
-  for (const run of runs) {
-    const button = element("button", undefined, `history-item ${state.selected === run.run_id ? "selected" : ""}`);
-    button.type = "button";
-    button.setAttribute("aria-pressed", String(state.selected === run.run_id));
-    const main = element("span", undefined, "history-main");
-    main.append(element("span", sourceNames[run.source] || run.source), element("span", statusNames[run.status], "history-state"));
-    button.append(main, element("span", `${date(run.created_at)} · ${run.run_id.slice(0, 6)}`, "history-sub"));
-    button.addEventListener("click", () => selectRun(run.run_id, true));
-    history.append(button);
-  }
+  latestRuns = runs; paintRunLists(); loadRunSummaries();
 }
 async function selectRun(runId, loadInput = false) {
-  document.querySelector(".sidebar").classList.remove("is-open");
-  $("toggle-history").setAttribute("aria-expanded", "false");
+  if ($("history-sidebar").open) $("history-sidebar").close();
+  flow.revision++;
   state.selected = runId; state.signature = "";
   try {
     const run = await api(`/api/runs/${runId}`);
@@ -570,13 +560,16 @@ async function selectRun(runId, loadInput = false) {
       $("smiles").value = run.request.smiles || "";
       $("protein").value = run.request.protein_sequence || "";
       syncExampleWithInput();
-      chosenModels = new Set(Array.isArray(run.request.models) ? run.request.models : [run.request.model || "CNN_CNN_BindingDB"]);
+      chosenModels = new Set(requestedModelNames(run));
       $("device-selection").value = ["auto", "cpu", "cuda"].includes(run.request.device) ? run.request.device : "cpu";
-      renderModelChoices();
+      renderModelChoices(); changedPair(true, true);
       countInputs(); note("선택한 실행의 입력입니다. 수정하여 다시 실행할 수 있습니다.");
     }
     showRun(run);
-  } catch (error) { note(error.message, true); }
+    goToStage(loadInput && run.result ? "results" : "execution");
+  } catch (error) {
+    if (state.selected === runId) { note(error.message, true); goToStage("models"); }
+  }
 }
 async function refreshHealth() {
   try {
@@ -608,20 +601,20 @@ async function poll() {
   try {
     const {runs} = await api("/api/runs");
     $("connection").textContent = "로컬 연결됨"; $("connection").className = "connection online";
-    const newest = runs[0]?.run_id || null;
-    if ((!state.initialized || newest !== state.newest) && newest) state.selected = newest;
-    state.initialized = true; state.newest = newest;
     renderHistory(runs);
     const selected = state.selected;
-    if (selected) {
+    if (selected && (flow.run?.run_id !== selected || !flow.run?.result)) {
       const run = await api(`/api/runs/${selected}`);
       if (state.selected === selected) showRun(run);
     }
     if (state.submitted) {
       const submitted = runs.find(run => run.run_id === state.submitted);
-      if (submitted && ["success", "partial", "error"].includes(submitted.status)) {
+      if ((submitted && ["success", "partial", "error"].includes(submitted.status)) || (state.submitted === flow.run?.run_id && flow.run?.result)) {
+        if (state.selected === state.submitted) {
+          const status = (submitted || flow.run).status;
+          note(status === "success" ? "결과와 로그를 저장했습니다." : status === "partial" ? "일부 모델이 완료되었습니다. 각 모델의 결과와 오류를 확인하세요." : "실행이 끝났습니다. 결과에서 오류 원인을 확인하세요.");
+        }
         setBusy(false); state.submitted = null;
-        note(submitted.status === "success" ? "결과와 로그를 저장했습니다." : submitted.status === "partial" ? "일부 모델이 완료되었습니다. 각 모델의 결과와 오류를 확인하세요." : "실행이 끝났습니다. 결과 영역에서 오류 원인을 확인하세요.");
       }
     }
   } catch (error) {
@@ -629,9 +622,9 @@ async function poll() {
     if (state.busy) note("서버 연결을 확인하고 있습니다. 연결되면 실행 결과를 다시 조회합니다.", true);
   } finally { state.polling = false; }
 }
-$("smiles").addEventListener("input", () => { countInputs(); syncExampleWithInput(); });
-$("protein").addEventListener("input", () => { countInputs(); syncExampleWithInput(); });
-$("device-selection").addEventListener("change", describeDevice);
+$("smiles").addEventListener("input", () => { countInputs(); syncExampleWithInput(); changedPair(); });
+$("protein").addEventListener("input", () => { countInputs(); syncExampleWithInput(); changedPair(); });
+$("device-selection").addEventListener("change", () => { describeDevice(); clearRunView(); renderPlan(); });
 function syncExampleWithInput() {
   if (!exampleLibrary.size) return;
   const smiles = $("smiles").value.trim();
@@ -669,7 +662,10 @@ async function loadExamples() {
     if (!exampleLibrary.size) throw new Error("예시 목록이 비어 있습니다.");
     select.disabled = false;
     $("example-total").textContent = `· ${exampleLibrary.size}개`;
-    syncExampleWithInput();
+    if (!flow.edited && !$("smiles").value && !$("protein").value && exampleLibrary.has("aspirin-cox2")) {
+      select.value = "aspirin-cox2"; select.dispatchEvent(new Event("change"));
+    } else syncExampleWithInput();
+    loadRunSummaries();
   } catch (error) {
     $("example-select").replaceChildren(element("option", "예시 목록을 불러오지 못했습니다"));
     $("example-description").textContent = "페이지를 새로고침하거나 직접 입력해 주세요.";
@@ -678,34 +674,35 @@ async function loadExamples() {
 $("example-select").addEventListener("change", () => {
   const example = exampleLibrary.get($("example-select").value);
   describeExample();
-  if (!example) return;
+  if (!example) { $("smiles").value = ""; $("protein").value = ""; countInputs(); changedPair(); return; }
   $("smiles").value = example.input.smiles;
   $("protein").value = example.input.protein_sequence;
-  countInputs(); note(`${example.compound.name} · ${example.target.accession} 예시를 불러왔습니다. 예측 실행을 눌러 계산하세요.`);
+  countInputs(); changedPair(true);
 });
 $("new-run").addEventListener("click", () => {
-  document.querySelector(".sidebar").classList.remove("is-open");
-  $("toggle-history").setAttribute("aria-expanded", "false");
-  $("prediction-form").reset(); chosenModels = new Set(defaultModels); renderModelChoices(); describeExample(); $("smiles").focus();
-  note("새 입력을 작성하세요. 기존 결과는 실행 기록에 보관됩니다.");
+  if ($("history-sidebar").open) $("history-sidebar").close();
+  $("prediction-form").reset(); chosenModels = new Set(defaultModels); renderModelChoices(); describeDevice(); describeExample(); changedPair(); goToStage("input"); $("smiles").focus();
 });
 $("refresh").addEventListener("click", refreshHealth);
 $("toggle-history").addEventListener("click", () => {
-  const opened = document.querySelector(".sidebar").classList.toggle("is-open");
-  $("toggle-history").setAttribute("aria-expanded", String(opened));
+  $("history-sidebar").showModal(); loadRunSummaries();
 });
 $("prediction-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   if (state.busy) return;
+  if (flow.stage === "input") { $("next-models").click(); return; }
   const smiles = $("smiles").value, protein_sequence = $("protein").value;
-  if (!smiles.trim() || !protein_sequence.trim()) return note("SMILES와 단백질 서열을 모두 입력해 주세요.", true);
+  if (!smiles.trim() || !protein_sequence.trim()) { goToStage("input"); updateProfileStatus("화합물과 단백질 서열을 모두 입력하세요.", true); return; }
   const models = [...chosenModels].filter(name => modelCatalog.has(name));
   if (!models.length) return note("실행할 모델을 하나 이상 선택해 주세요.", true);
+  if (flow.profile?.status === "error") { goToStage("input"); return; }
+  const revision = flow.revision;
   setBusy(true); note("로컬 실행을 요청하고 있습니다.");
   try {
     const selection = models.length === 1 ? {model: models[0]} : {models};
     const run = await api("/api/runs", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({smiles, protein_sequence, device: $("device-selection").value, ...selection})});
-    state.submitted = run.run_id; state.selected = run.run_id; state.newest = run.run_id; state.signature = "";
+    state.submitted = run.run_id;
+    if (revision !== flow.revision) { await poll(); return; }
     await selectRun(run.run_id); await poll();
   } catch (error) { setBusy(false); note(error.message, true); }
 });
@@ -737,7 +734,7 @@ new MutationObserver(() => {
   convertDisclosures();
   document.body.classList.toggle("modal-open", $("info-modal").open);
 }).observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ["open"]});
-renderMethods(); convertDisclosures(); countInputs(); loadExamples(); refreshHealth(); poll();
+renderMethods(); convertDisclosures(); initWorkflow(); countInputs(); loadExamples(); refreshHealth(); poll();
 const tools = element("nav", undefined, "workbench-tools");
 tools.setAttribute("aria-label", "워크벤치 안내");
 document.querySelector(".bottom-row").hidden = true;
@@ -747,9 +744,9 @@ for (const [selector, title] of [["#model-methods", "모델별 예측 방법"], 
   tools.append(modalAction(title, () => [...panel.childNodes]));
 }
 tools.append(modalAction("에이전트 사용 안내", () => [...document.querySelector(".agent-help > div[hidden]").childNodes]));
-document.querySelector(".title-row").append(tools);
+document.querySelector(".rail-resources").append(tools);
 const inputHelp = element("div");
-inputHelp.append(modalAction("입력·실행 안내", () => {
+inputHelp.append(modalAction("입력 안내", () => {
   const nodes = [...document.querySelectorAll("#smiles-hint, #protein-hint, #model-selection-hint, #device-hint")].map(node => element("p", node.textContent));
   for (const item of modelCatalog.values()) nodes.push(element("p", `${modelMethods[item.model]?.name || item.model}: ${inputLimits(item)}`));
   return nodes;

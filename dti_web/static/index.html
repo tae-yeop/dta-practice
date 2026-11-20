@@ -8,53 +8,78 @@
   <link rel="icon" href="/static/mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/app.css">
   <link rel="stylesheet" href="/static/profile.css">
+  <link rel="stylesheet" href="/static/workflow.css">
+  <script src="/static/workflow.js" defer></script>
   <script src="/static/app.js" defer></script>
   <script src="/static/profile-ui.js" defer></script>
 </head>
-<body data-ui>
+<body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="DTI Lab 처음으로"><img src="/static/mark.svg" alt="" width="28" height="28"><strong>DTI Lab</strong></a>
-    <span class="workspace">Affinity workbench <span class="slash">/</span> 로컬 연구 공간</span>
-    <button id="toggle-history" class="text-button history-toggle" aria-expanded="false" aria-controls="history-sidebar" type="button">최근 실행</button>
+    <span class="workspace">분자 결합 워크벤치</span>
     <span id="connection" class="connection">연결 확인 중</span>
+    <button id="toggle-history" class="secondary-button" aria-haspopup="dialog" type="button">실행 기록</button>
   </header>
-  <aside class="sidebar" id="history-sidebar" aria-label="실행 기록">
-    <div class="sidebar-heading"><h2>최근 실행</h2><button class="text-button" id="new-run" type="button">새 입력</button></div>
-    <p class="history-hint">웹과 에이전트의 실행이 함께 표시됩니다.</p>
-    <div id="history" class="history"><p class="muted">아직 실행 기록이 없습니다.</p></div>
-    <div class="sidebar-foot"><strong>여러 모델의 예측 근거</strong><span>서열 · 그래프 · 3D 구조</span><span>모델별 점수와 실행 기록</span></div>
+  <aside class="flow-rail">
+    <p class="rail-heading">분석 단계</p>
+    <nav id="stage-nav" aria-label="분석 단계">
+      <button type="button" data-stage="input" aria-current="step"><span class="step-number">1</span><span><strong>입력 프로파일</strong><small>화합물과 단백질</small></span></button>
+      <button type="button" data-stage="models"><span class="step-number">2</span><span><strong>모델 선택</strong><small>입력 조건과 실행 계획</small></span></button>
+      <button type="button" data-stage="execution"><span class="step-number">3</span><span><strong>실행 추적</strong><small>작업 상태와 로그</small></span></button>
+      <button type="button" data-stage="results"><span class="step-number">4</span><span><strong>결과 해석</strong><small>예측값과 근거</small></span></button>
+    </nav>
+    <div class="rail-resources"><p class="rail-heading">도구 및 안내</p><button id="roadmap" type="button" class="modal-action" aria-haspopup="dialog">전체 분석 설계</button></div>
   </aside>
+  <dialog id="history-sidebar" class="info-modal" aria-labelledby="history-heading">
+    <div class="modal-heading"><h2 id="history-heading">실행 기록</h2><button id="history-close" type="button" class="modal-close" autofocus>닫기 ×</button></div>
+    <div id="history" class="history"><p class="muted">기록을 불러오는 중…</p></div>
+  </dialog>
   <main class="sheet">
-    <div class="title-row"><div><h1>결합 친화도 예측</h1><p>분자와 단백질 한 쌍에서, 점수의 의미까지.</p></div><span class="version">로컬 분석 워크벤치</span></div>
-    <div class="workbench">
-      <section class="input-panel" aria-labelledby="input-heading">
-        <div class="section-heading"><h2 id="input-heading">예측 입력</h2><button id="preview-profile" class="modal-action" type="button" aria-haspopup="dialog">입력 프로파일</button></div>
-        <form id="prediction-form">
+    <div class="title-row"><div><h1 id="stage-title" tabindex="-1">입력 프로파일</h1><p id="stage-description">분자 구조와 표적 서열을 확인하세요.</p></div><button id="new-run" class="secondary-button" type="button">＋ 새 분석</button></div>
+    <form id="prediction-form" novalidate>
+      <div class="stage-pane input-layout" data-pane="input">
+        <section class="input-panel" aria-labelledby="input-heading">
+          <div class="section-heading"><h2 id="input-heading">분석 입력</h2></div>
           <div class="example-picker">
-            <label for="example-select">예시 입력 불러오기 <span id="example-total"></span></label>
+            <label for="example-select">예시 선택 <span id="example-total"></span></label>
             <select id="example-select" disabled aria-describedby="example-description"><option>예시를 불러오는 중…</option></select>
             <p class="field-hint">예시를 선택하면 아래 SMILES와 단백질 서열이 바로 바뀝니다. 직접 입력해도 됩니다.</p>
             <p id="example-description" class="field-hint">공개 데이터의 SMILES와 전체 단백질 서열을 사용합니다.</p>
-            <details id="example-details" hidden><summary>선택한 예시의 출처와 주의점</summary><div id="example-evidence"></div></details>
+            <details id="example-details" hidden><summary>예시 출처</summary><div id="example-evidence"></div></details>
           </div>
-          <div class="field"><div class="label-row"><label for="smiles">SMILES</label><span id="smiles-count">0 / 100</span></div>
+          <div class="field"><div class="label-row"><label for="smiles">화합물 SMILES</label><span id="smiles-count">0 / 100</span></div>
             <textarea id="smiles" name="smiles" rows="3" required spellcheck="false" placeholder="CC(=O)Oc1ccccc1C(=O)O" aria-describedby="smiles-hint"></textarea>
             <p id="smiles-hint" class="field-hint">단일 분자 · 최대 100자 · 일부 입체화학 표기 미지원</p></div>
-          <div class="field"><div class="label-row"><label for="protein">Protein sequence</label><span id="protein-count">0 / 1,000 aa</span></div>
+          <div class="field"><div class="label-row"><label for="protein">표적 단백질 서열</label><span id="protein-count">0 / 1,000 aa</span></div>
             <textarea id="protein" name="protein_sequence" rows="6" required spellcheck="false" placeholder="MKTAYIAKQRQISFVKSHFSRQDIL…" aria-describedby="protein-hint"></textarea>
             <p id="protein-hint" class="field-hint">FASTA 헤더 없이 입력 · 표준 아미노산 20종 · 최대 1,000 aa</p></div>
+        </section>
+        <section class="specimen" aria-labelledby="specimen-heading">
+          <div class="section-heading"><h2 id="specimen-heading">구조 미리보기</h2><div class="view-switch" aria-label="미리보기 대상"><button id="view-protein" type="button" aria-pressed="true">단백질</button><button id="view-drug" type="button" aria-pressed="false">화합물</button></div></div>
+          <div id="preview-body" aria-live="polite"></div>
+          <button id="preview-profile" class="modal-action" type="button" aria-haspopup="dialog">프로파일 상세</button>
+        </section>
+        <div class="stage-actions"><span id="input-feedback" role="status"></span><button id="next-models" class="primary" type="button">모델 선택으로 <span aria-hidden="true">→</span></button></div>
+        <section class="recent-section" aria-labelledby="recent-heading">
+          <div class="section-heading"><h2 id="recent-heading">최근 실행</h2><button id="all-runs" class="text-button" type="button">전체 기록 →</button></div>
+          <div id="recent-runs"></div>
+        </section>
+      </div>
+      <div class="stage-pane model-layout" data-pane="models" hidden>
+        <section class="model-setup sheet-panel">
           <fieldset class="field model-field"><legend>사용 모델 <span id="model-selection-count" class="muted"></span></legend>
             <div id="model-selection" class="model-options"><p class="field-hint">모델 목록을 불러오는 중…</p></div>
             <p class="field-hint" id="model-selection-hint">선택한 모델만 순차 실행합니다. Boltz-2는 별도로 선택하세요.</p>
-            <a href="#model-methods" class="method-link">모델별 예측 방법 비교 ↓</a>
+            <a href="#model-methods" class="method-link" aria-haspopup="dialog">모델별 예측 방법 비교 ↗</a>
           </fieldset>
           <div class="device-field"><label for="device-selection">실행 장치</label><select id="device-selection" name="device" aria-describedby="device-hint"><option value="auto">자동 · 모델별 권장 장치</option><option value="cpu">CPU · 모든 선택 모델</option><option value="cuda">GPU · 모든 선택 모델에 CUDA 강제</option></select></div>
           <p class="field-hint" id="device-hint" aria-live="polite"></p>
-          <p class="field-hint">구조·단백질 임베딩 계산은 수 분 이상 걸릴 수 있습니다. 실행 중에도 로그가 갱신됩니다.</p>
-          <p id="form-note" class="form-note" role="status">입력은 이 컴퓨터의 모델 실행에 사용됩니다.</p>
-          <button id="submit" class="primary" type="submit">예측 실행 <span aria-hidden="true">↗</span></button>
-        </form>
-      </section>
+        </section>
+        <section class="sheet-panel"><h2>실행 계획</h2><div id="plan-summary" aria-live="polite"></div></section>
+        <div class="stage-actions"><p id="form-note" class="form-note" role="status"></p><button id="submit" class="primary" type="submit">예측 실행 <span aria-hidden="true">→</span></button></div>
+      </div>
+    </form>
+    <div class="stage-pane" data-pane="results" hidden>
       <section class="output-panel" aria-labelledby="result-heading">
         <div class="section-heading"><h2 id="result-heading">예측 결과</h2><span id="result-status" class="pill">입력 대기</span></div>
         <div id="result-content" class="result-content" aria-live="polite">
@@ -63,11 +88,15 @@
         <div class="result-footer"><span id="run-meta">저장된 예측값 없음</span><a id="download-result" class="download" hidden>결과 JSON ↓</a></div>
       </section>
     </div>
+    <div class="stage-pane" data-pane="execution" hidden>
+    <div id="execution-summary" class="run-summary"></div>
     <section class="trace-panel" aria-labelledby="trace-heading">
       <div class="section-heading"><div class="heading-inline"><h2 id="trace-heading">실행 로그</h2><span id="event-count" class="muted">0개 이벤트</span></div><a id="download-events" class="download" hidden>로그 JSONL ↓</a></div>
-      <div class="trace-route" aria-label="실행 경로"><span id="route-source">요청</span><span aria-hidden="true">→</span><span>Skill <b>predict-dta</b></span><span aria-hidden="true">→</span><span>Tool <b>predict_dta</b></span><span aria-hidden="true">→</span><span>모델 결과</span></div>
+      <div class="trace-route"></div>
       <div id="events" class="events" aria-live="polite"><p class="empty-log">실행을 시작하면 스킬 로드와 도구 호출이 시간순으로 기록됩니다.</p></div>
     </section>
+    <div class="stage-actions"><button id="next-results" class="primary" type="button" disabled>결과 보기 <span aria-hidden="true">→</span></button></div>
+    </div>
     <section class="methods-panel" id="model-methods" aria-labelledby="methods-heading">
       <div class="section-heading"><h2 id="methods-heading">모델별 예측 방법</h2><span class="muted">현재 연결된 4개 모델</span></div>
       <p class="methods-intro">입력은 모두 SMILES와 단백질 서열입니다. 모델마다 내부 표현과 예측하는 값이 다릅니다.</p>
@@ -86,7 +115,6 @@
       <div class="readiness"><div class="section-heading"><h2>모델 준비 상태</h2><button id="refresh" class="text-button" type="button">새로고침</button></div><div id="model-state">로컬 체크포인트를 확인하고 있습니다.</div><div id="setup-command" hidden></div></div>
       <details class="agent-help"><summary>에이전트에게 요청하려면</summary><p>이 프로젝트를 연 에이전트에게 SMILES와 단백질 서열을 전달하고 “predict-dta 스킬로 예측해줘”라고 요청하세요. 실행 결과와 로그가 이 화면에도 표시됩니다.</p><p>웹 버튼은 같은 도구를 실행하는 로컬 워크플로입니다. 별도 LLM 호출은 없으며, 로그의 스킬 로드는 실제 문서 로드를 뜻합니다.</p></details>
     </section>
-    <footer class="page-footer"><span>모델별 DTA·DTI 출력 · 통합 점수 미제공</span><span>예측 구간 미보정 · 검증된 오차 범위 미제공</span></footer>
   </main>
   <dialog id="info-modal" class="info-modal" aria-labelledby="modal-title">
     <div class="modal-heading"><h2 id="modal-title">상세 설명</h2><button id="modal-close" class="modal-close" type="button" autofocus aria-label="설명 닫기">닫기 ×</button></div>
