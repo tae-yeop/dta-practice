@@ -8,6 +8,13 @@ description: Run the local predict_dta tool for SMILES plus protein sequence usi
 The project root is two directories above this skill. Keep computation in the
 `predict_dta` tool and use its returned evidence for interpretation.
 
+For pre-inference questions, call `profile_input` with only `smiles` and
+`protein_sequence` or run `python -m dti_tool profile --input request.json`
+in the project environment. Each prediction run also saves the profile beside
+its result. Use the model's observed checks, warnings and output endpoint with
+the user's requested task. Training matches are scoped to the named checkpoint,
+stage and manifest. Preserve unknown overlap and unassessed OOD in your answer.
+
 | Model ID | Output | Execution |
 | --- | --- | --- |
 | `CNN_CNN_BindingDB` | Raw log-affinity; exact endpoint unverified | CPU default, SMILES ≤100 characters |
