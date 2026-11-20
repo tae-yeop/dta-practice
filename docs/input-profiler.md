@@ -1,6 +1,12 @@
-# 입력 프로파일 v1.0
+# 입력 프로파일 v1.1
 
 워크벤치의 **입력 프로파일**은 편집 중인 입력을 검사한다. **저장된 입력 프로파일**은 해당 예측을 시작할 때 기록한 값을 연다. 둘 다 모달에서 전체 JSON을 저장할 수 있다.
+
+**화합물** 탭은 입력 SMILES의 2D 구조식과 분리된 리간드의 3D 형태 한 가지를 보여준다. RDKit ETKDGv3로 수소를 추가한 후 고정 시드 42에서 좌표를 계산한다. 3D 좌표는 SDF로 저장할 수 있다. 미지정 입체중심은 생성된 좌표에서 한 가지 배치로 나타날 수 있다. 3D 미리보기는 수소 추가 전 128원자까지 계산하며, 계산 실패·크기 초과 시 프로파일에 사유를 남긴다. 2D 그림은 400원자까지 생성한다.
+
+**단백질 구조** 탭은 입력 전체 서열이 로컬 카탈로그와 정확히 일치할 때, 그 accession에 대응하는 실험 구조를 연다. 예시 표적 다섯 종의 mmCIF와 PDBe 매핑을 저장소에 포함했다. 관측 범위는 UniProt 번호 기준이며 화면은 지정한 사슬을 보여준다. 원본 CIF에는 전체 엔트리가 담겨 있다. 화면의 비고분자 목록은 해당 엔트리에 등록된 성분이다. [좌표 출처와 사슬 매핑](../examples/structures/index.json)
+
+**예측 복합체**는 Boltz-2가 해당 실행에서 저장한 CIF를 사용한다. 결과의 **복합체 3D 보기**를 누르면 같은 좌표계에서 단백질과 리간드를 회전해 볼 수 있다. 최신 프로파일이 함께 저장된 실행에서는 프로파일 안에서도 열 수 있다. 1.0 스냅샷에는 당시 관측치가 표시되며, 입력을 다시 분석해 최신 프로파일을 열 수 있다. 뷰어는 로컬에 포함된 3Dmol.js 2.5.5를 사용한다.
 
 ```powershell
 .venv\Scripts\python.exe -m dti_tool profile --input examples/requests/acetazolamide-ca2.json --output runs/profile.json
@@ -12,6 +18,7 @@ Python에서는 `from dti_tool import profile_input`으로 가져와 `profile_in
 | --- | --- |
 | `original`, `compound`, `protein` | 원본과 정규화한 입력, 입체화학·전하를 보존한 구조 식별자, 잔기 수와 조성, 서열 해시. 분자에는 분자식, 원자·결합·고리, 전하, 분자량, logP, TPSA, 수소 결합, 골격과 입체화학 정보가 있다. |
 | `pair_id` | 원자 매핑 번호를 제거한 canonical isomeric SMILES와 전체 정규화 서열을 순서대로 묶은 SHA-256. CNN 문자 조건은 사용자가 입력한 SMILES 표기에 적용한다. |
+| `compound.structures`, `protein.reference_structures` | 2D PNG(base64), 3D 생성 상태·방법·SDF, 실험 구조의 PDB ID·사슬·분해능·관측 범위·비고분자 성분·출처와 로컬 좌표 경로·SHA-256. |
 | `catalog` | 로컬 카탈로그의 정확한 구조, 전체 서열, 예시 쌍을 개별 조회한 결과와 원래 출처. `no_match`의 범위는 기록된 카탈로그 버전이다. |
 | `models[id]` | 출력 종류, 입력 적격 여부, 규칙별 관측치와 한도, 표현상의 주의점. `warn`인 모델도 입력을 받을 수 있다. 체크포인트 준비 상태와 CPU·GPU 가용성은 별도 `status`에서 확인한다. |
 | `training`, `applicability` | 각 모델에 속한 체크포인트·학습 단계별 중복, 실제 학습 항목 ID와 최근접 관측치. 검증된 OOD 판정 기준이 없어 `ood_status`는 `not_assessed`다. |

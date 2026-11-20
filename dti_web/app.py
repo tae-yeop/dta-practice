@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -18,6 +19,7 @@ from starlette.staticfiles import StaticFiles
 from dti_tool.__main__ import status
 from dti_tool.models import PROJECT
 from dti_tool.profiler import execute_profile
+from dti_tool.profile_structures import structure_catalog
 from dti_tool.processes import process_options, request_timeout, terminate_process_tree
 from dti_tool.runs import create_run, fail_run, get_run, list_runs, run_dir
 from dti_web.examples import load_examples
@@ -155,10 +157,48 @@ async def download(request):
     return FileResponse(path, media_type=media_type, filename=f"{request.path_params['run_id']}-{name}")
 
 
+async def reference_structure(request):
+    pdb = request.path_params["pdb"]
+    if pdb not in {entry["pdb_id"] for entry in structure_catalog().values()}:
+        return JSONResponse({"error": "등록된 실험 구조가 없습니다."}, status_code=404)
+    path = PROJECT / "examples" / "structures" / (pdb + ".cif.gz")
+    if not path.is_file():
+        return JSONResponse({"error": "좌표 파일이 없습니다."}, status_code=404)
+    return FileResponse(path, media_type="chemical/x-cif", headers={"Content-Encoding": "gzip"}, filename=pdb + ".cif")
+
+
+def complex_path(run_id):
+    result = json.loads((run_dir(run_id) / "result.json").read_bytes())
+    root = Path(os.environ.get("DTI_BOLTZ_RUNS_DIR", PROJECT / "runs" / "boltz2-jobs")).resolve()
+    for item in result.get("results", [result]):
+        if item.get("status") != "success" or item.get("requested_model") != "Boltz2":
+            continue
+        raw_path = item.get("artifacts", {}).get("complex_cif")
+        if not raw_path:
+            continue
+        path = Path(raw_path).resolve()
+        parts = path.relative_to(root).parts
+        if (len(parts) == 5 and re.fullmatch("[a-f0-9]{32}", parts[0])
+                and parts[1:] == ("boltz_results_input", "predictions", "input", "input_model_0.cif")
+                and path.is_file()):
+            return path
+    raise ValueError("No saved complex")
+
+
+async def predicted_complex(request):
+    try:
+        path = await asyncio.to_thread(complex_path, request.path_params["run_id"])
+    except (OSError, ValueError):
+        return JSONResponse({"error": "이 실행의 복합체 좌표 파일을 찾을 수 없습니다."}, status_code=404)
+    return FileResponse(path, media_type="chemical/x-cif", filename="boltz2-complex.cif")
+
+
 def create_app():
     app = Starlette(lifespan=lifespan, routes=[
         Route("/", index), Route("/api/status", health), Route("/api/examples", examples),
         Route("/api/profile", profile, methods=["POST"]),
+        Route("/api/structures/{pdb}.cif", reference_structure),
+        Route("/api/runs/{run_id}/complex.cif", predicted_complex),
         Route("/api/runs", history, methods=["GET", "POST"]),
         Route("/api/runs/{run_id}", detail),
         Route("/api/runs/{run_id}/download/{kind}", download),

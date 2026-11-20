@@ -68,7 +68,7 @@ function element(tag, text, className) {
 // Native dialogs keep keyboard focus inside the explanation and restore it on close.
 function openModal(title, nodes) {
   const dialog = $("info-modal");
-  dialog.classList.remove("graph-modal");
+  dialog.classList.remove("graph-modal", "profile-modal");
   $("modal-title").textContent = title;
   $("modal-body").replaceChildren(...nodes.map(node => node.cloneNode(true)));
   if (!dialog.open) dialog.showModal();
@@ -268,31 +268,16 @@ const profileRules = {
   atoms: "원자 수", directed_bond_slots: "방향성 결합 슬롯", neighbors: "원자당 최대 이웃 수",
   heavy_atoms: "중원자 수", atoms_after_remove_hs: "수소 제거 후 원자 수", recommended_ligand_atoms: "권장 원자 수",
 };
-function profileNodes(profile) {
+function profileModelNodes(profile) {
   const nodes = [];
-  for (const error of profile.errors || (profile.error ? [profile.error] : [])) {
-    nodes.push(element("p", [error.field === "smiles" ? "분자" : error.field === "protein_sequence" ? "단백질" : "", fixes[error.code]?.[0] || error.message].filter(Boolean).join(" · ")));
-  }
-  const {compound, protein, catalog} = profile;
-  const drug = catalog?.compound?.matches?.[0], target = catalog?.protein?.matches?.[0];
-  const facts = element("dl", undefined, "result-facts");
-  function fact(label, value) {
-    const row = element("div"); row.append(element("dt", label), element("dd", value)); facts.append(row);
-  }
-  if (compound) fact(drug?.name || "분자", [compound.formula, compound.molecular_weight_da.toFixed(2) + " Da", "중원자 " + compound.heavy_atoms + "개"].join(" · "));
-  if (protein) fact(target?.name || "단백질", [target?.accession, target?.organism, protein.length + " aa"].filter(Boolean).join(" · "));
-  if (catalog?.pair?.status === "matched") fact("예시 쌍", catalog.pair.matches.map(row => row.id).join(", "));
-  if (catalog?.pair?.status === "no_match") fact("예시 쌍", "로컬 카탈로그에 일치 항목 없음");
-  if (catalog?.status === "failed") fact("예시 쌍", "카탈로그 조회 실패");
-  if (facts.childElementCount) nodes.push(facts);
   const models = Object.entries(profile.models || {});
   if (models.length) {
     const list = element("ul");
     for (const [id, model] of models) {
-      const issues = [...model.checks.filter(check => check.status === "fail"), ...model.warnings];
+      const issues = [...model.checks, ...model.warnings];
       const detail = issues.map(check => {
         if (check.rule === "chirality_blind_fingerprint") return "분자 지문이 입체화학을 구별하지 않음";
-        const value = Array.isArray(check.observed) ? check.observed.join(" ") : check.observed;
+        const value = Array.isArray(check.observed) ? (check.observed.join(" ") || "없음") : check.observed;
         return (profileRules[check.rule] || check.rule) + " " + value + (check.maximum != null ? " / 상한 " + check.maximum : "");
       });
       const row = element("li");
@@ -317,7 +302,7 @@ function profileNodes(profile) {
   }
   return nodes;
 }
-async function showProfile(path, options) {
+async function showProfile(path, options, complexUrl) {
   openModal("입력 프로파일", [element("p", "입력을 확인하고 있습니다…")]);
   const pending = $("modal-body").firstElementChild;
   try {
@@ -327,7 +312,7 @@ async function showProfile(path, options) {
     const link = element("a", "전체 프로파일 JSON 저장", "download");
     link.href = url; link.download = "input-profile.json";
     $("info-modal").addEventListener("close", () => URL.revokeObjectURL(url), {once: true});
-    $("modal-body").replaceChildren(...profileNodes(profile), link);
+    renderInputProfile(profile, link, complexUrl);
   } catch (error) {
     if (pending.isConnected) pending.textContent = "프로파일을 열 수 없습니다. " + error.message;
   }
@@ -413,7 +398,7 @@ function setDownload(id, run, kind, enabled) {
   if (enabled) link.href = `/api/runs/${run.run_id}/download/${kind}`;
   else link.removeAttribute("href");
 }
-function renderModelResult(result) {
+function renderModelResult(result, runId) {
   const box = element("section", undefined, "model-result");
   const heading = element("div", undefined, "model-result-heading");
   heading.append(element("code", result.requested_model || result.model?.model || "CNN_CNN_BindingDB"),
@@ -474,6 +459,12 @@ function renderModelResult(result) {
       element("pre", JSON.stringify(structure, null, 2)));
     explanation.append(details);
   }
+  if (model === "Boltz2" && result.artifacts?.complex_cif) {
+    const button = element("button", "복합체 3D 보기", "modal-action complex-action");
+    button.type = "button"; button.setAttribute("aria-haspopup", "dialog");
+    button.addEventListener("click", () => showRunComplex(runId));
+    box.append(button);
+  }
   return box;
 }
 function showRun(run) {
@@ -497,7 +488,7 @@ function showRun(run) {
     body.append(box);
   } else if (Array.isArray(result.results)) {
     body.append(element("p", `${result.summary.succeeded}개 성공 · ${result.summary.failed}개 실패`, "comparison-summary"));
-    for (const item of result.results) body.append(renderModelResult(item));
+    for (const item of result.results) body.append(renderModelResult(item, run.run_id));
     body.append(element("p", "모델마다 출력의 의미와 척도가 다릅니다. 원시 점수를 평균하거나 하나의 결합 확률로 합치지 않습니다. Conformal 구간은 아직 보정되지 않았습니다.", "result-warning"));
   } else if (result.status === "error") {
     const code = result.error.code;
@@ -506,7 +497,7 @@ function showRun(run) {
     box.append(element("code", result.requested_model || "predict_dta"), element("code", code), element("h3", title), element("p", result.error.message), element("p", resolution, "resolution"));
     body.append(box);
   } else {
-    body.append(renderModelResult(result), element("p", "모델의 출력과 해당 척도를 함께 확인하세요. 실험 측정값이 아니며, conformal 예측 구간은 아직 보정되지 않았습니다.", "result-warning"));
+    body.append(renderModelResult(result, run.run_id), element("p", "모델의 출력과 해당 척도를 함께 확인하세요. 실험 측정값이 아니며, conformal 예측 구간은 아직 보정되지 않았습니다.", "result-warning"));
   }
   const inputs = element("details", undefined, "input-receipt");
   inputs.append(element("summary", "이 실행의 입력 확인"));
@@ -517,7 +508,9 @@ function showRun(run) {
   if (run.events.some(event => event.component === "profiler")) {
     const saved = element("button", "저장된 입력 프로파일", "modal-action");
     saved.type = "button"; saved.setAttribute("aria-haspopup", "dialog");
-    saved.addEventListener("click", () => showProfile("/api/runs/" + run.run_id + "/download/profile"));
+    const hasComplex = (result?.results || [result]).some(item => item?.artifacts?.complex_cif);
+    saved.addEventListener("click", () => showProfile("/api/runs/" + run.run_id + "/download/profile", undefined,
+      hasComplex ? "/api/runs/" + run.run_id + "/complex.cif" : null));
     body.append(saved);
   }
   setDownload("download-result", run, "result", Boolean(result));
