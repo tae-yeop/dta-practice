@@ -1,0 +1,203 @@
+{
+  "P23219": {
+    "pdb_id": "6Y3C",
+    "chain": "A",
+    "coverage": 0.93,
+    "observed_regions": [
+      {
+        "unp_start": 27,
+        "unp_end": 583
+      }
+    ],
+    "method": "X-ray diffraction",
+    "resolution_angstrom": 3.36,
+    "title": "Human COX-1 Crystal Structure",
+    "sequence_sha256": "267b33979bfb5ca263d131678bce8f2d9d962079ce118d4b59fc0d4af11f9364",
+    "source_url": "https://www.rcsb.org/structure/6Y3C",
+    "mapping_url": "https://www.ebi.ac.uk/pdbe/graph-api/uniprot/best_structures/P23219",
+    "coordinates_url": "https://files.rcsb.org/download/6Y3C.cif.gz",
+    "cif_sha256": "68619f9519620678808062dc3e2ba874200faa575ecde3335fc751af7d2108f0",
+    "nonpolymer_components": [
+      {
+        "ccd": "FLC",
+        "name": "CITRATE ANION"
+      }
+    ]
+  },
+  "P35354": {
+    "pdb_id": "5F19",
+    "chain": "A",
+    "coverage": 0.91,
+    "observed_regions": [
+      {
+        "unp_start": 19,
+        "unp_end": 569
+      }
+    ],
+    "method": "X-ray diffraction",
+    "resolution_angstrom": 2.04,
+    "title": "The Crystal Structure of Aspirin Acetylated Human Cyclooxygenase-2",
+    "sequence_sha256": "e68aee34450b6e76702b13eaa365d21b896beea374590ad39bfdd7e8d6c145a8",
+    "source_url": "https://www.rcsb.org/structure/5F19",
+    "mapping_url": "https://www.ebi.ac.uk/pdbe/graph-api/uniprot/best_structures/P35354",
+    "coordinates_url": "https://files.rcsb.org/download/5F19.cif.gz",
+    "cif_sha256": "d9086d24782c178d8c4c3a1c12a8c6d4b617a4af21d2d01156a4835c3c1f51b9",
+    "nonpolymer_components": [
+      {
+        "ccd": "COH",
+        "name": "PROTOPORPHYRIN IX CONTAINING CO"
+      },
+      {
+        "ccd": "NAG",
+        "name": "2-acetamido-2-deoxy-beta-D-glucopyranose"
+      },
+      {
+        "ccd": "AKR",
+        "name": "ACRYLIC ACID"
+      },
+      {
+        "ccd": "EDO",
+        "name": "1,2-ETHANEDIOL"
+      },
+      {
+        "ccd": "BOG",
+        "name": "octyl beta-D-glucopyranoside"
+      }
+    ]
+  },
+  "P00918": {
+    "pdb_id": "6S9Z",
+    "chain": "A",
+    "coverage": 1.0,
+    "observed_regions": [
+      {
+        "unp_start": 1,
+        "unp_end": 260
+      }
+    ],
+    "method": "X-ray diffraction",
+    "resolution_angstrom": 0.95,
+    "title": "Expression tag modified N-terminus of human Carbonic Anhydrase II covalently linked to fragment",
+    "sequence_sha256": "e6a24c903c1ef211037c64a6835a8a484f48b17be1cae50d6998913f21acf7d4",
+    "source_url": "https://www.rcsb.org/structure/6S9Z",
+    "mapping_url": "https://www.ebi.ac.uk/pdbe/graph-api/uniprot/best_structures/P00918",
+    "coordinates_url": "https://files.rcsb.org/download/6S9Z.cif.gz",
+    "cif_sha256": "cf8cc2ebb06daf208cc1733f7ffc6ac332ca6b3bd370fbaaa0d1926b50632cb7",
+    "nonpolymer_components": [
+      {
+        "ccd": "HG",
+        "name": "MERCURY (II) ION"
+      },
+      {
+        "ccd": "ZN",
+        "name": "ZINC ION"
+      },
+      {
+        "ccd": "NA",
+        "name": "SODIUM ION"
+      },
+      {
+        "ccd": "DMS",
+        "name": "DIMETHYL SULFOXIDE"
+      },
+      {
+        "ccd": "BE7",
+        "name": "(4-CARBOXYPHENYL)(CHLORO)MERCURY"
+      },
+      {
+        "ccd": "VKL",
+        "name": "3-[3,4-bis(fluoranyl)phenyl]-5-methyl-1$l^{4},4,5$l^{4},7-tetrazabicyclo[4.3.0]nona-1(6),2,4-triene"
+      },
+      {
+        "ccd": "PG4",
+        "name": "TETRAETHYLENE GLYCOL"
+      }
+    ]
+  },
+  "P0ABQ4": {
+    "pdb_id": "7FQA",
+    "chain": "A",
+    "coverage": 1.0,
+    "observed_regions": [
+      {
+        "unp_start": 1,
+        "unp_end": 159
+      }
+    ],
+    "method": "X-ray diffraction",
+    "resolution_angstrom": 1.08,
+    "title": "DHFR:NADP+:FOL complex (crystal 1, pass 4, 280 K)",
+    "sequence_sha256": "e193a4b689d70ba3b38c9f812a9b212e4ec24cec07f6c90f0600341c8b0c77f5",
+    "source_url": "https://www.rcsb.org/structure/7FQA",
+    "mapping_url": "https://www.ebi.ac.uk/pdbe/graph-api/uniprot/best_structures/P0ABQ4",
+    "coordinates_url": "https://files.rcsb.org/download/7FQA.cif.gz",
+    "cif_sha256": "b710d384cf80ad25a5f126d2e70323fb6509568fef9a398ac3d82f91a76fc54b",
+    "nonpolymer_components": [
+      {
+        "ccd": "FOL",
+        "name": "FOLIC ACID"
+      },
+      {
+        "ccd": "NAP",
+        "name": "NADP NICOTINAMIDE-ADENINE-DINUCLEOTIDE PHOSPHATE"
+      },
+      {
+        "ccd": "MN",
+        "name": "MANGANESE (II) ION"
+      }
+    ]
+  },
+  "P29274": {
+    "pdb_id": "4EIY",
+    "chain": "A",
+    "coverage": 0.72,
+    "observed_regions": [
+      {
+        "unp_start": 2,
+        "unp_end": 208
+      },
+      {
+        "unp_start": 219,
+        "unp_end": 307
+      }
+    ],
+    "method": "X-ray diffraction",
+    "resolution_angstrom": 1.8,
+    "title": "Crystal structure of the chimeric protein of A2aAR-BRIL in complex with ZM241385 at 1.8A resolution",
+    "sequence_sha256": "d1707e447ac7d7fcd10f6f1c1e61754460b8f5e206eedc0ba64747cd49b733f2",
+    "source_url": "https://www.rcsb.org/structure/4EIY",
+    "mapping_url": "https://www.ebi.ac.uk/pdbe/graph-api/uniprot/best_structures/P29274",
+    "coordinates_url": "https://files.rcsb.org/download/4EIY.cif.gz",
+    "cif_sha256": "4c791ee7d1efb6ae0004f36b453f9653b5e61ba294a403f77672ca97fef011fb",
+    "nonpolymer_components": [
+      {
+        "ccd": "ZMA",
+        "name": "4-{2-[(7-amino-2-furan-2-yl[1,2,4]triazolo[1,5-a][1,3,5]triazin-5-yl)amino]ethyl}phenol"
+      },
+      {
+        "ccd": "NA",
+        "name": "SODIUM ION"
+      },
+      {
+        "ccd": "CLR",
+        "name": "CHOLESTEROL"
+      },
+      {
+        "ccd": "OLA",
+        "name": "OLEIC ACID"
+      },
+      {
+        "ccd": "OLC",
+        "name": "(2R)-2,3-dihydroxypropyl (9Z)-octadec-9-enoate"
+      },
+      {
+        "ccd": "OLB",
+        "name": "(2S)-2,3-dihydroxypropyl (9Z)-octadec-9-enoate"
+      },
+      {
+        "ccd": "PEG",
+        "name": "DI(HYDROXYETHYL)ETHER"
+      }
+    ]
+  }
+}

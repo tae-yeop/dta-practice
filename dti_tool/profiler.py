@@ -8,12 +8,13 @@ import json
 from .input_rules import input_checks, normalize_sequence, parse_ligand
 from .models import MODELS, PROJECT, ToolError
 from .profile_references import audit_training, lookup_evidence
+from .profile_structures import ligand_structures, protein_structures
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 
 
 def profile_schema():
-    return {"name": "profile_input", "description": "Inspect one SMILES and protein sequence offline. Returns input identity, descriptors, model input checks and sourced evidence before prediction.",
+    return {"name": "profile_input", "description": "Inspect a SMILES and protein sequence offline. Returns chemical descriptors, ligand structure and conformer, available experimental target structure references, model input checks and sourced evidence.",
             "inputSchema": {"type": "object", "additionalProperties": False, "required": ["smiles", "protein_sequence"],
                             "properties": {name: {"type": "string"} for name in ("smiles", "protein_sequence")}}}
 
@@ -51,7 +52,8 @@ def _compound(ligand):
             "tpsa_angstrom2": rdMolDescriptors.CalcTPSA(mol),
             "hbond_donors": Lipinski.NumHDonors(mol), "hbond_acceptors": Lipinski.NumHAcceptors(mol),
             "rotatable_bonds": Lipinski.NumRotatableBonds(mol), "rings": rdMolDescriptors.CalcNumRings(mol),
-            "murcko_scaffold": MurckoScaffold.MurckoScaffoldSmiles(mol=mol) or None, "stereochemistry": stereo}
+            "murcko_scaffold": MurckoScaffold.MurckoScaffoldSmiles(mol=mol) or None, "stereochemistry": stereo,
+            "structures": ligand_structures(mol)}
 
 
 @lru_cache(maxsize=1)
@@ -134,6 +136,8 @@ def _profile_pair(smiles, protein_sequence):
               "pair_id": None, "catalog": catalog_matches(compound, sequence), "models": {}}
     if compound and protein:
         result["pair_id"] = _digest(json.dumps([compound["identity_smiles"], sequence], separators=(",", ":")))
+    if protein:
+        protein["reference_structures"] = protein_structures(protein, result["catalog"])
     result["enrichment"] = lookup_evidence(result["pair_id"], protein and protein["sequence_sha256"])
     if errors:
         result.update(status="error", error=errors[0])

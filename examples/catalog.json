@@ -10,7 +10,9 @@
       "smiles": "CC(=O)NC1=NN=C(S1)S(=O)(=O)N",
       "inchikey": "BZKPWHYZMXOIDC-UHFFFAOYSA-N",
       "molecular_formula": "C4H6N4O3S2",
-      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/1986"
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/1986",
+      "iupac_name": "N-(5-sulfamoyl-1,3,4-thiadiazol-2-yl)acetamide",
+      "iupac_source_url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1986/property/IUPACName,InChIKey/JSON"
     },
     "2153": {
       "cid": 2153,
@@ -18,7 +20,9 @@
       "smiles": "CN1C2=C(C(=O)N(C1=O)C)NC=N2",
       "inchikey": "ZFXYFBGIUFBOJW-UHFFFAOYSA-N",
       "molecular_formula": "C7H8N4O2",
-      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/2153"
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/2153",
+      "iupac_name": "1,3-dimethyl-7H-purine-2,6-dione",
+      "iupac_source_url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2153/property/IUPACName,InChIKey/JSON"
     },
     "2244": {
       "cid": 2244,
@@ -26,7 +30,9 @@
       "smiles": "CC(=O)OC1=CC=CC=C1C(=O)O",
       "inchikey": "BSYNRYMUTXBXSQ-UHFFFAOYSA-N",
       "molecular_formula": "C9H8O4",
-      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/2244"
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/2244",
+      "iupac_name": "2-acetyloxybenzoic acid",
+      "iupac_source_url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/property/IUPACName,InChIKey/JSON"
     },
     "2519": {
       "cid": 2519,
@@ -34,7 +40,9 @@
       "smiles": "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
       "inchikey": "RYYVLZVUVIJVGH-UHFFFAOYSA-N",
       "molecular_formula": "C8H10N4O2",
-      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/2519"
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/2519",
+      "iupac_name": "1,3,7-trimethylpurine-2,6-dione",
+      "iupac_source_url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2519/property/IUPACName,InChIKey/JSON"
     },
     "2662": {
       "cid": 2662,
@@ -42,7 +50,9 @@
       "smiles": "CC1=CC=C(C=C1)C2=CC(=NN2C3=CC=C(C=C3)S(=O)(=O)N)C(F)(F)F",
       "inchikey": "RZEKVGVHFLEQIL-UHFFFAOYSA-N",
       "molecular_formula": "C17H14F3N3O2S",
-      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/2662"
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/2662",
+      "iupac_name": "4-[5-(4-methylphenyl)-3-(trifluoromethyl)pyrazol-1-yl]benzenesulfonamide",
+      "iupac_source_url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2662/property/IUPACName,InChIKey/JSON"
     },
     "3033": {
       "cid": 3033,
@@ -50,7 +60,9 @@
       "smiles": "C1=CC=C(C(=C1)CC(=O)O)NC2=C(C=CC=C2Cl)Cl",
       "inchikey": "DCOPUUMXTXDBNB-UHFFFAOYSA-N",
       "molecular_formula": "C14H11Cl2NO2",
-      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/3033"
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/3033",
+      "iupac_name": "2-[2-(2,6-dichloroanilino)phenyl]acetic acid",
+      "iupac_source_url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/3033/property/IUPACName,InChIKey/JSON"
     },
     "3672": {
       "cid": 3672,
@@ -58,7 +70,9 @@
       "smiles": "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O",
       "inchikey": "HEFNNWSXXWATRW-UHFFFAOYSA-N",
       "molecular_formula": "C13H18O2",
-      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/3672"
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/3672",
+      "iupac_name": "2-[4-(2-methylpropyl)phenyl]propanoic acid",
+      "iupac_source_url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/3672/property/IUPACName,InChIKey/JSON"
     },
     "4100": {
       "cid": 4100,
@@ -66,7 +80,9 @@
       "smiles": "CC(=O)N=C1N(N=C(S1)S(=O)(=O)N)C",
       "inchikey": "FLOSMHQXBMRNHR-UHFFFAOYSA-N",
       "molecular_formula": "C5H8N4O3S2",
-      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/4100"
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/4100",
+      "iupac_name": "N-(3-methyl-5-sulfamoyl-1,3,4-thiadiazol-2-ylidene)acetamide",
+      "iupac_source_url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/4100/property/IUPACName,InChIKey/JSON"
     },
     "5578": {
       "cid": 5578,
@@ -74,7 +90,9 @@
       "smiles": "COC1=CC(=CC(=C1OC)OC)CC2=CN=C(N=C2N)N",
       "inchikey": "IEDVJHCEMCRBQM-UHFFFAOYSA-N",
       "molecular_formula": "C14H18N4O3",
-      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/5578"
+      "source_url": "https://pubchem.ncbi.nlm.nih.gov/compound/5578",
+      "iupac_name": "5-[(3,4,5-trimethoxyphenyl)methyl]pyrimidine-2,4-diamine",
+      "iupac_source_url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/5578/property/IUPACName,InChIKey/JSON"
     }
   },
   "targets": {
