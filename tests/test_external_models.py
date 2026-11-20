@@ -70,7 +70,7 @@ def test_mixed_model_progress_is_written_before_next_model_starts(monkeypatch):
     assert result["task"] == "drug_target_comparison"
     assert result["prediction"] is None and result["aggregate"] is None
     assert [e["event"] for e in get_run(result["trace"]["run_id"])["events"]] == [
-        "request.received", "skill.loaded", "tool.started", "model.started", "model.completed",
+        "request.received", "skill.loaded", "profile.completed", "tool.started", "model.started", "model.completed",
         "model.started", "model.completed", "tool.completed", "run.completed"]
 
 

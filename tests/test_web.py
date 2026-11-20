@@ -36,12 +36,15 @@ def test_web_runs_real_tool_and_downloads_failure_trace(tmp_path, monkeypatch):
         assert run["result"]["prediction"] is None
         assert run["request"] == PAIR
         assert [event["event"] for event in run["events"]] == [
-            "request.received", "skill.loaded", "tool.started", "tool.failed", "run.failed"]
+            "request.received", "skill.loaded", "profile.completed", "tool.started", "tool.failed", "run.failed"]
         assert run["events"][1]["details"]["sha256"] == sha256(SKILL_PATH)
         result = client.get(f"/api/runs/{run_id}/download/result")
         assert result.json() == run["result"]
         events = client.get(f"/api/runs/{run_id}/download/events").text.splitlines()
         assert [json.loads(line) for line in events] == run["events"]
+        saved = client.get(f"/api/runs/{run_id}/download/profile").json()
+        assert run["result"]["input_profile"]["pair_id"] == saved["pair_id"]
+        assert client.post("/api/profile", json=PAIR).json() == saved
         assert client.get("/api/runs").json()["runs"][0]["run_id"] == run_id
         assert client.get("/api/runs/invalid").status_code == 404
         assert client.get(f"/api/runs/{run_id}/download/request").status_code == 404
@@ -76,6 +79,16 @@ def test_local_api_rejects_cross_origin_bad_hosts_and_oversized_bodies():
         assert client.post("/api/runs", content="{", headers={"Content-Type": "application/json"}).status_code == 400
         assert client.post("/api/runs", json=[]).status_code == 400
         assert client.post("/api/runs", json={"smiles": "x" * 66000}).status_code == 413
+        assert client.get("/api/runs").json() == {"runs": []}
+
+
+def test_standalone_web_profile_reports_errors_without_creating_runs():
+    with TestClient(create_app()) as client:
+        assert client.post("/api/profile", json=PAIR).json()["models"]["Boltz2"]["eligible"]
+        invalid = client.post("/api/profile", json={**PAIR, "protein_sequence": ">header"}).json()
+        assert invalid["errors"][0]["field"] == "protein_sequence"
+        assert client.post("/api/profile", json=[]).status_code == 400
+        assert client.post("/api/profile", json={**PAIR, "smiles": "C" * 66000}).status_code == 413
         assert client.get("/api/runs").json() == {"runs": []}
 
 

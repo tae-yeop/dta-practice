@@ -163,7 +163,7 @@ def test_full_adapter_loads_exact_synthetic_weights(tmp_path, model):
         assert record["result"]["prediction"]["raw_value"] == pytest.approx(7.25)
         assert record["result"]["uncertainty"]["interval"] is None
         assert [event["event"] for event in record["events"]] == [
-            "request.received", "skill.loaded", "tool.started", "tool.completed", "run.completed"]
+            "request.received", "skill.loaded", "profile.completed", "tool.started", "tool.completed", "run.completed"]
 
         # One installed model must not hide the failure of the other.
         queued = client.post("/api/runs", json={"smiles": DRUG, "protein_sequence": SEQ, "models": list(DEEPPURPOSE_MODELS)}).json()

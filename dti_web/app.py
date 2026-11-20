@@ -17,6 +17,7 @@ from starlette.staticfiles import StaticFiles
 
 from dti_tool.__main__ import status
 from dti_tool.models import PROJECT
+from dti_tool.profiler import execute_profile
 from dti_tool.processes import process_options, request_timeout, terminate_process_tree
 from dti_tool.runs import create_run, fail_run, get_run, list_runs, run_dir
 from dti_web.examples import load_examples
@@ -95,11 +96,7 @@ async def health(request):
     return JSONResponse({**state, "skill": "predict-dta", "mode": "local_tool_workflow"})
 
 
-async def history(request):
-    if request.method == "GET":
-        return JSONResponse({"runs": await asyncio.to_thread(list_runs)})
-    if len(request.app.state.tasks) >= 8:
-        return JSONResponse({"error": "실행 대기열이 가득 찼습니다. 잠시 후 다시 시도하세요."}, status_code=429)
+async def request_object(request):
     body = bytearray()
     async for chunk in request.stream():
         body.extend(chunk)
@@ -109,9 +106,27 @@ async def history(request):
         arguments = json.loads(body)
         if not isinstance(arguments, dict):
             raise ValueError("입력은 JSON 객체여야 합니다.")
-        metadata = await asyncio.to_thread(create_run, arguments, "web", True)
+        return arguments
     except (ValueError, UnicodeError) as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def profile(request):
+    arguments = await request_object(request)
+    if isinstance(arguments, JSONResponse):
+        return arguments
+    return JSONResponse(await asyncio.to_thread(execute_profile, arguments))
+
+
+async def history(request):
+    if request.method == "GET":
+        return JSONResponse({"runs": await asyncio.to_thread(list_runs)})
+    if len(request.app.state.tasks) >= 8:
+        return JSONResponse({"error": "실행 대기열이 가득 찼습니다. 잠시 후 다시 시도하세요."}, status_code=429)
+    arguments = await request_object(request)
+    if isinstance(arguments, JSONResponse):
+        return arguments
+    metadata = await asyncio.to_thread(create_run, arguments, "web", True)
     task = asyncio.create_task(run_worker(metadata["run_id"], request.app.state.semaphore))
     request.app.state.tasks.add(task)
     task.add_done_callback(request.app.state.tasks.discard)
@@ -128,7 +143,8 @@ async def detail(request):
 
 async def download(request):
     kind = request.path_params["kind"]
-    files = {"result": ("result.json", "application/json"), "events": ("events.jsonl", "application/x-ndjson")}
+    files = {"result": ("result.json", "application/json"), "events": ("events.jsonl", "application/x-ndjson"),
+             "profile": ("input-profile.json", "application/json")}
     try:
         name, media_type = files[kind]
         path = run_dir(request.path_params["run_id"]) / name
@@ -142,6 +158,7 @@ async def download(request):
 def create_app():
     app = Starlette(lifespan=lifespan, routes=[
         Route("/", index), Route("/api/status", health), Route("/api/examples", examples),
+        Route("/api/profile", profile, methods=["POST"]),
         Route("/api/runs", history, methods=["GET", "POST"]),
         Route("/api/runs/{run_id}", detail),
         Route("/api/runs/{run_id}/download/{kind}", download),

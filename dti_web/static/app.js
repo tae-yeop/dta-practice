@@ -159,6 +159,7 @@ function renderTraceSummary(run) {
   document.querySelector(".trace-panel .section-heading").insertBefore(route, $("download-events"));
   route.classList.add("trace-progress"); route.setAttribute("aria-label", "실행 단계별 상태");
   const steps = [["요청", "request"], ...(run.use_skill ? [["스킬", "skill"]] : []), ["예측 도구", "tool"], ["결과", "run"]];
+  if (run.events.some(e => e.component === "profiler")) steps.splice(steps.length - 2, 0, ["입력 검사", "profile"]);
   for (const [label, prefix] of steps) {
     const events = run.events.filter(event => event.event.startsWith(`${prefix}.`));
     const last = events.at(-1);
@@ -207,6 +208,10 @@ function showCallGraph(run) {
     edges.push(["workflow", "skill", "문서 로드", true]);
   }
   node("tool", 2, "predict_dta", "실행 도구", tools);
+  if (matching("profile").length) {
+    node("profile", 2, "입력 프로파일", "입력 검사", matching("profile"));
+    edges.push(["workflow", "profile", "프로파일 생성", false]);
+  }
   edges.push(["workflow", "tool", tools.length ? "호출" : "호출 전", !tools.length]);
   const requested = Array.isArray(run.request?.models) ? run.request.models : [run.request?.model || "CNN_CNN_BindingDB"];
   const names = [...new Set([...requested, ...matching("model").map(event => event.details?.model).filter(Boolean)])];
@@ -257,6 +262,80 @@ async function api(path, options) {
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
   return data;
 }
+
+const profileRules = {
+  protein_residues: "서열 길이", smiles_characters: "SMILES 길이", unsupported_smiles_tokens: "지원하지 않는 문자",
+  atoms: "원자 수", directed_bond_slots: "방향성 결합 슬롯", neighbors: "원자당 최대 이웃 수",
+  heavy_atoms: "중원자 수", atoms_after_remove_hs: "수소 제거 후 원자 수", recommended_ligand_atoms: "권장 원자 수",
+};
+function profileNodes(profile) {
+  const nodes = [];
+  for (const error of profile.errors || (profile.error ? [profile.error] : [])) {
+    nodes.push(element("p", [error.field === "smiles" ? "분자" : error.field === "protein_sequence" ? "단백질" : "", fixes[error.code]?.[0] || error.message].filter(Boolean).join(" · ")));
+  }
+  const {compound, protein, catalog} = profile;
+  const drug = catalog?.compound?.matches?.[0], target = catalog?.protein?.matches?.[0];
+  const facts = element("dl", undefined, "result-facts");
+  function fact(label, value) {
+    const row = element("div"); row.append(element("dt", label), element("dd", value)); facts.append(row);
+  }
+  if (compound) fact(drug?.name || "분자", [compound.formula, compound.molecular_weight_da.toFixed(2) + " Da", "중원자 " + compound.heavy_atoms + "개"].join(" · "));
+  if (protein) fact(target?.name || "단백질", [target?.accession, target?.organism, protein.length + " aa"].filter(Boolean).join(" · "));
+  if (catalog?.pair?.status === "matched") fact("예시 쌍", catalog.pair.matches.map(row => row.id).join(", "));
+  if (catalog?.pair?.status === "no_match") fact("예시 쌍", "로컬 카탈로그에 일치 항목 없음");
+  if (catalog?.status === "failed") fact("예시 쌍", "카탈로그 조회 실패");
+  if (facts.childElementCount) nodes.push(facts);
+  const models = Object.entries(profile.models || {});
+  if (models.length) {
+    const list = element("ul");
+    for (const [id, model] of models) {
+      const issues = [...model.checks.filter(check => check.status === "fail"), ...model.warnings];
+      const detail = issues.map(check => {
+        if (check.rule === "chirality_blind_fingerprint") return "분자 지문이 입체화학을 구별하지 않음";
+        const value = Array.isArray(check.observed) ? check.observed.join(" ") : check.observed;
+        return (profileRules[check.rule] || check.rule) + " " + value + (check.maximum != null ? " / 상한 " + check.maximum : "");
+      });
+      const row = element("li");
+      row.append(element("strong", (modelLabels[id] || id) + " · " + ({pass: "통과", warn: "주의", fail: "입력 미지원"}[model.status])));
+      if (detail.length) row.append(element("div", detail.join(" · ")));
+      const stages = {supervised: "지도학습", protein_pretraining: "단백질 사전학습", structure_training: "구조 학습"};
+      const overlap = {seen: "관측", not_seen: "미관측", unknown: "미확인"};
+      for (const [stage, audit] of Object.entries(model.training)) {
+        if (audit.lookup_status === "queried") {
+          row.append(element("div", stages[stage] + " 목록 · 분자 " + overlap[audit.overlap.compound] +
+            " · 단백질 " + overlap[audit.overlap.protein] + " · 쌍 " + overlap[audit.overlap.pair], "field-hint"));
+        }
+      }
+      list.append(row);
+    }
+    nodes.push(element("h3", "모델별 입력 조건"), list);
+    const stages = models.flatMap(([, model]) => Object.values(model.training));
+    const checked = stages.filter(stage => stage.lookup_status === "queried").length;
+    const failed = stages.filter(stage => stage.lookup_status === "failed").length;
+    nodes.push(element("p", (checked ? "학습 목록 " + checked + "건 대조 완료." : "대조한 학습 목록 없음.") +
+      (failed ? " 목록 조회 실패 " + failed + "건." : "") + " 학습 분포 이탈 여부는 미평가입니다.", "field-hint"));
+  }
+  return nodes;
+}
+async function showProfile(path, options) {
+  openModal("입력 프로파일", [element("p", "입력을 확인하고 있습니다…")]);
+  const pending = $("modal-body").firstElementChild;
+  try {
+    const profile = await api(path, options);
+    if (!pending.isConnected || !$("info-modal").open) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(profile, null, 2)], {type: "application/json"}));
+    const link = element("a", "전체 프로파일 JSON 저장", "download");
+    link.href = url; link.download = "input-profile.json";
+    $("info-modal").addEventListener("close", () => URL.revokeObjectURL(url), {once: true});
+    $("modal-body").replaceChildren(...profileNodes(profile), link);
+  } catch (error) {
+    if (pending.isConnected) pending.textContent = "프로파일을 열 수 없습니다. " + error.message;
+  }
+}
+$("preview-profile").addEventListener("click", () => showProfile("/api/profile", {
+  method: "POST", headers: {"Content-Type": "application/json"},
+  body: JSON.stringify({smiles: $("smiles").value, protein_sequence: $("protein").value}),
+}));
 function countInputs() {
   const smilesLength = $("smiles").value.trim().length;
   const proteinLength = $("protein").value.replace(/\s/g, "").length;
@@ -435,6 +514,12 @@ function showRun(run) {
   const requestedModels = Array.isArray(request.models) ? request.models : [request.model || request.models || "CNN_CNN_BindingDB"];
   inputs.append(element("pre", `Models\n${requestedModels.join(", ")}\n\nDevice\n${request.device || "cpu"}\n\nSMILES\n${request.smiles ?? ""}\n\nProtein sequence\n${request.protein_sequence ?? ""}`));
   body.append(inputs);
+  if (run.events.some(event => event.component === "profiler")) {
+    const saved = element("button", "저장된 입력 프로파일", "modal-action");
+    saved.type = "button"; saved.setAttribute("aria-haspopup", "dialog");
+    saved.addEventListener("click", () => showProfile("/api/runs/" + run.run_id + "/download/profile"));
+    body.append(saved);
+  }
   setDownload("download-result", run, "result", Boolean(result));
   setDownload("download-events", run, "events", true);
   renderTraceSummary(run);
@@ -457,7 +542,7 @@ function showRun(run) {
       else if (event.details.error_message) message.append(element("br"), document.createTextNode(event.details.error_message));
     }
     const identity = element("span", undefined, "event-identity");
-    const component = {model: "모델", tool: "도구", run: "실행", worker: "작업", workflow: "워크플로"}[event.event.split(".")[0]];
+    const component = {model: "모델", profile: "입력 검사", tool: "도구", run: "실행", worker: "작업", workflow: "워크플로"}[event.event.split(".")[0]];
     identity.append(eventIcon(visual), element("span", component ? `${component} ${visual.label}` : visual.label, "event-name"));
     identity.title = event.event;
     row.append(stamp, identity, message, modalAction(`${event.event} · ${time(event.timestamp)}`, [element("p", event.message), element("pre", JSON.stringify(event, null, 2))], "상세"));

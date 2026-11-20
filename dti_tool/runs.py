@@ -88,6 +88,7 @@ def fail_run(run_id, code, message):
 
 def execute_run(run_id):
     from .core import execute_tool, error_result
+    from .profiler import profile_input
     folder = run_dir(run_id)
     metadata = read_json(folder / "run.json")
     if metadata["status"] != "queued":
@@ -108,6 +109,15 @@ def execute_run(run_id):
                          sha256=hashlib.sha256(document).hexdigest(),
                          meaning="Execution wrapper loaded the skill document; this is not an LLM reasoning trace.")
         arguments = read_json(folder / "request.json")
+        profile = None
+        if isinstance(arguments, dict) and {"smiles", "protein_sequence"} <= arguments.keys():
+            profile = profile_input(arguments["smiles"], arguments["protein_sequence"])
+            write_json(folder / "input-profile.json", profile)
+            valid = profile["status"] == "success"
+            append_event(run_id, "profile.completed" if valid else "profile.failed", "profiler",
+                         "입력 프로파일을 저장했습니다." if valid else "입력 검사에서 오류를 발견했습니다.",
+                         name="profile_input", pair_id=profile.get("pair_id"), artifact="input-profile.json",
+                         error_code=profile.get("error", {}).get("code"))
         append_event(run_id, "tool.started", "tool", "predict_dta 도구를 호출했습니다.", name="predict_dta",
                      selection={key: arguments[key] for key in ("model", "models") if isinstance(arguments, dict) and key in arguments})
         def model_event(phase, name, result):
@@ -118,6 +128,9 @@ def execute_run(run_id):
                                elapsed_seconds=result["execution"]["elapsed_seconds"])
             append_event(run_id, f"model.{phase}", "model", f"{name}: {phase}", **details)
         result = execute_tool(arguments, on_model_event=model_event)
+        if profile is not None:
+            result["input_profile"] = {"artifact": "input-profile.json", "schema_version": profile["schema_version"],
+                                       "pair_id": profile.get("pair_id"), "status": profile["status"]}
         append_event(run_id, {"success": "tool.completed", "partial": "tool.partial", "error": "tool.failed"}[result["status"]], "tool",
                      "일부 모델의 예측을 완료했습니다." if result["status"] == "partial" else
                      "예측을 완료했습니다." if result["status"] == "success" else result["error"]["message"],

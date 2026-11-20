@@ -25,7 +25,9 @@ def test_mcp_discovery_and_error_contract(tmp_path):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 listed = await session.list_tools()
-                assert [item.name for item in listed.tools] == ["predict_dta"]
+                assert [item.name for item in listed.tools] == ["predict_dta", "profile_input"]
+                profile = await session.call_tool("profile_input", {"smiles": "CCO", "protein_sequence": "ACDEFGHIK"})
+                assert not profile.isError and profile.structuredContent["compound"]["formula"] == "C2H6O"
                 assert listed.tools[0].inputSchema["additionalProperties"] is False
                 assert listed.tools[0].inputSchema["properties"]["models"]["items"]["enum"] == list(MODELS)
                 missing = await session.call_tool("predict_dta", {"smiles": "CCO", "protein_sequence": "ACDEFGHIK"})
@@ -36,7 +38,7 @@ def test_mcp_discovery_and_error_contract(tmp_path):
                 trace = get_run(missing.structuredContent["trace"]["run_id"])
                 assert trace["source"] == "mcp"
                 assert [event["event"] for event in trace["events"]] == [
-                    "request.received", "skill.loaded", "tool.started", "tool.failed", "run.failed"]
+                    "request.received", "skill.loaded", "profile.completed", "tool.started", "tool.failed", "run.failed"]
                 unknown = await session.call_tool("predict_dta", {"smiles": "CCO", "protein_sequence": "ACDEFGHIK", "extra": 1})
                 assert unknown.isError
                 assert unknown.structuredContent["error"]["code"] == "INVALID_ARGUMENT"

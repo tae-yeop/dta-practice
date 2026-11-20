@@ -11,6 +11,7 @@ PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT))
 
 from dti_tool.core import error_result, tool_schema
+from dti_tool.profiler import profile_error, profile_schema
 from dti_tool.runs import create_run, fail_run
 from dti_tool.processes import process_options, request_timeout, terminate_process_tree
 from mcp.server.lowlevel import Server
@@ -54,14 +55,32 @@ def run_worker(arguments):
 
 @server.list_tools()
 async def list_tools():
-    return [Tool(**tool_schema(), annotations=ToolAnnotations(
-        readOnlyHint=True, destructiveHint=False, openWorldHint=False))]
+    return [Tool(**schema(), annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False))
+            for schema in (tool_schema, profile_schema)]
+
+
+def profile_worker(arguments):
+    if not isinstance(arguments, dict) or set(arguments) != {"smiles", "protein_sequence"}:
+        return profile_error("INVALID_ARGUMENT", "Supply smiles and protein_sequence.")
+    python = os.environ.get("DTI_INFERENCE_PYTHON", str(DEFAULT_PYTHON))
+    try:
+        worker = subprocess.run([python, "-m", "dti_tool", "profile", "--input", "-"], cwd=PROJECT,
+                                input=json.dumps(arguments), text=True, encoding="utf-8", capture_output=True,
+                                timeout=180, **process_options())
+        result = json.loads(worker.stdout)
+        if worker.returncode != {"success": 0, "error": 2}[result["status"]] or result["tool"] != "profile_input":
+            raise ValueError("Unexpected profile worker response.")
+        return result
+    except (OSError, ValueError, TypeError, KeyError, subprocess.TimeoutExpired) as exc:
+        return profile_error("PROFILE_WORKER_FAILED", str(exc))
 
 
 @server.call_tool(validate_input=False)
 async def call_tool(name, arguments):
     # The CLI applies the same validation and JSON error envelope for all clients.
-    if name != "predict_dta":
+    if name == "profile_input":
+        result = await asyncio.to_thread(profile_worker, arguments)
+    elif name != "predict_dta":
         result = error_result("UNKNOWN_TOOL", f"Unknown tool: {name}")
     else:
         async with worker_lock:
