@@ -10,8 +10,8 @@
   <link rel="stylesheet" href="/static/profile.css">
   <link rel="stylesheet" href="/static/workflow.css">
   <script src="/static/workflow.js" defer></script>
-  <script src="/static/app.js" defer></script>
   <script src="/static/profile-ui.js" defer></script>
+  <script src="/static/app.js" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -59,10 +59,10 @@
           <div id="preview-body" aria-live="polite"></div>
         </section>
         <div class="stage-actions"><span id="input-feedback" role="status"></span><button id="next-models" class="primary" type="button">모델 선택으로 <span aria-hidden="true">→</span></button></div>
-        <button id="preview-profile" class="modal-action" type="button" aria-haspopup="dialog" aria-controls="info-modal" aria-labelledby="preview-profile-label" aria-describedby="preview-profile-summary" disabled>
-          <strong id="preview-profile-label">구조·프로파일 상세</strong>
-          <span id="preview-profile-summary"></span>
-        </button>
+        <section id="preview-profile" aria-labelledby="draft-profile-title" hidden>
+          <div class="section-heading"><h2 id="draft-profile-title">구조·프로파일 상세</h2><a id="draft-profile-download" class="download" download="input-profile.json">전체 프로파일 JSON 저장</a></div>
+          <div id="draft-profile"></div>
+        </section>
         <section class="recent-section" aria-labelledby="recent-heading">
           <div class="section-heading"><h2 id="recent-heading">최근 실행</h2><button id="all-runs" class="text-button" type="button">전체 기록 →</button></div>
           <div id="recent-runs"></div>

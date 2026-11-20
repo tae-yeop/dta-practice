@@ -1,7 +1,8 @@
 "use strict";
 
-// A single local WebGL context can be reused across tabs and modal openings.
-let moleculeLibrary, moleculeViewer, moleculeCanvas;
+// Each surface reuses its WebGL context across profiles and tab changes.
+let moleculeLibrary;
+const moleculeSurfaces = new WeakMap();
 function loadMoleculeLibrary() {
   if (!moleculeLibrary) moleculeLibrary = new Promise((resolve, reject) => {
     const script = document.createElement("script");
@@ -60,13 +61,10 @@ function structureFigure(spec) {
     controls.replaceChildren(profileButton("3D 형태 보기", draw3d));
   }
   async function draw3d() {
+    if (!stage.isConnected) return;
     const token = ++drawToken;
     stage.replaceChildren(element("span", "좌표를 불러오는 중…"));
     caption.textContent = spec.caption;
-    const reset = profileButton("시점 초기화", () => {
-      moleculeViewer.setView(initialView); moleculeViewer.render();
-    });
-    let initialView;
     controls.replaceChildren();
     if (spec.png) controls.append(profileButton("2D 구조식", draw2d));
     try {
@@ -75,17 +73,21 @@ function structureFigure(spec) {
           if (!r.ok) throw new Error("좌표 파일을 읽을 수 없습니다.");
           return r.text();
         })]);
-      if (token !== drawToken || !stage.isConnected || !$("info-modal").open) return;
-      if (!moleculeCanvas) moleculeCanvas = element("div", undefined, "molecule-canvas");
-      stage.replaceChildren(moleculeCanvas);
-      if (!moleculeViewer) {
+      const dialog = stage.closest("dialog");
+      if (token !== drawToken || !stage.isConnected || (dialog && !dialog.open)) return;
+      const owner = dialog || stage.closest("#preview-profile");
+      let surface = moleculeSurfaces.get(owner);
+      if (!surface) {
         const probe = document.createElement("canvas");
         const gl = probe.getContext("webgl2") || probe.getContext("webgl");
         if (!gl) throw new Error("브라우저에서 WebGL을 사용할 수 없습니다. 아래 링크에서 좌표를 저장할 수 있습니다.");
         gl.getExtension("WEBGL_lose_context")?.loseContext();
-        moleculeViewer = lib.createViewer(moleculeCanvas, {backgroundColor: "#f5f9f8", antialias: true});
-      }
-      const viewer = moleculeViewer;
+        const canvas = element("div", undefined, "molecule-canvas");
+        stage.replaceChildren(canvas);
+        surface = {canvas, viewer: lib.createViewer(canvas, {backgroundColor: "#f5f9f8", antialias: true})};
+        moleculeSurfaces.set(owner, surface);
+      } else stage.replaceChildren(surface.canvas);
+      const viewer = surface.viewer;
       viewer.clear(); viewer.resize();
       const model = viewer.addModel(coordinates, spec.text ? "sdf" : "cif");
       const selection = spec.chain ? {chain: spec.chain, hetflag: false} : {};
@@ -97,10 +99,11 @@ function structureFigure(spec) {
         if (spec.complex) viewer.setStyle({chain: "L"}, {stick: {radius: 0.28, colorscheme: "orangeCarbon"}, sphere: {scale: 0.32}});
       }
       viewer.setView([0, 0, 0, 0, 0, 0, 0, 1]); viewer.zoomTo(selection); viewer.render();
-      initialView = viewer.getView();
+      const initialView = viewer.getView();
       stage.setAttribute("aria-label", spec.caption + " · 드래그하여 회전");
       stage.setAttribute("role", "img");
-      controls.append(profileButton("회전", () => { viewer.rotate(30, "y"); viewer.render(); }), reset);
+      controls.append(profileButton("회전", () => { viewer.rotate(30, "y"); viewer.render(); }),
+        profileButton("시점 초기화", () => { viewer.setView(initialView); viewer.render(); }));
     } catch (error) {
       if (token !== drawToken || !stage.isConnected) return;
       stage.replaceChildren(spec.png ? depiction(spec.png) : element("p", "3D 미리보기를 열 수 없습니다."));
@@ -217,32 +220,35 @@ function evidencePanel(profile) {
   return panel;
 }
 
-function renderInputProfile(profile, download, complexUrl) {
-  const body = $("modal-body");
-  body.replaceChildren(); $("info-modal").classList.add("profile-modal");
+function renderInputProfile(body, profile, {complexUrl, selectedView = "compound", onSelect} = {}) {
+  body.replaceChildren();
   for (const error of profile.errors || (profile.error ? [profile.error] : [])) {
     body.append(element("p", (error.field === "smiles" ? "화합물 · " : error.field === "protein_sequence" ? "단백질 · " : "") +
       (fixes[error.code]?.[0] || error.message)));
   }
   const drug = profile.catalog?.compound?.matches?.[0], target = profile.catalog?.protein?.matches?.[0];
   const views = [];
-  if (profile.compound) views.push(["화합물", () => compoundPanel(profile.compound, drug)]);
-  if (profile.protein) views.push(["단백질 구조", () => proteinPanel(profile.protein, target)]);
-  if (complexUrl) views.push(["예측 복합체", () => complexPanel(complexUrl)]);
-  if (Object.keys(profile.models || {}).length) views.push(["모델·근거", () => evidencePanel(profile)]);
+  if (profile.compound) views.push(["compound", "화합물", () => compoundPanel(profile.compound, drug)]);
+  if (profile.protein) views.push(["protein", "단백질 구조", () => proteinPanel(profile.protein, target)]);
+  if (complexUrl) views.push(["complex", "예측 복합체", () => complexPanel(complexUrl)]);
+  if (Object.keys(profile.models || {}).length) views.push(["evidence", "모델·근거", () => evidencePanel(profile)]);
   if (views.length) {
     const bar = element("div", undefined, "profile-tabs"), content = element("div", undefined, "profile-content");
     bar.setAttribute("role", "tablist"); bar.setAttribute("aria-label", "입력 프로파일 항목");
-    content.id = "profile-content"; content.setAttribute("role", "tabpanel");
+    const prefix = body.id === "modal-body" ? "profile" : body.id;
+    content.id = prefix + "-content"; content.setAttribute("role", "tabpanel");
     function select(index) {
       for (const [i, button] of [...bar.children].entries()) {
         button.setAttribute("aria-selected", String(i === index)); button.tabIndex = i === index ? 0 : -1;
       }
-      content.setAttribute("aria-labelledby", "profile-tab-" + index);
-      content.replaceChildren(views[index][1]());
+      content.setAttribute("aria-labelledby", bar.children[index].id);
+      const [view, , makePanel] = views[index];
+      content.replaceChildren(makePanel());
+      onSelect?.(view);
     }
-    views.forEach(([label], i) => {
-      const tab = profileButton(label, () => select(i)); tab.id = "profile-tab-" + i;
+    views.forEach(([view, label], i) => {
+      const tab = profileButton(label, () => select(i)); tab.id = prefix + "-tab-" + i;
+      tab.dataset.view = view;
       tab.setAttribute("role", "tab"); tab.setAttribute("aria-controls", content.id);
       tab.addEventListener("keydown", event => {
         const next = {ArrowRight: (i + 1) % views.length, ArrowLeft: (i + views.length - 1) % views.length,
@@ -251,11 +257,10 @@ function renderInputProfile(profile, download, complexUrl) {
       });
       bar.append(tab);
     });
-    body.append(bar, content); select(0);
+    body.append(bar, content); select(Math.max(0, views.findIndex(([key]) => key === selectedView)));
   }
   if (profile.schema_version === "1.0" && profile.original) {
     body.append(profileButton("이전 입력으로 최신 프로파일 열기", () => showProfile("/api/profile", {method: "POST",
       headers: {"Content-Type": "application/json"}, body: JSON.stringify(profile.original)}, complexUrl)));
   }
-  body.append(download);
 }

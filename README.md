@@ -18,7 +18,7 @@ Agent → skills/predict-dta/SKILL.md
 
 ## 웹앱 실행
 
-**입력 프로파일** 단계에서 분자·서열과 구조 미리보기를 확인한다. **구조·프로파일 상세**를 열면 분자 특성, 회전 가능한 3D 구조, 모델별 입력 조건과 전체 JSON을 볼 수 있다. Python과 MCP에서는 `profile_input`, CLI에서는 `.venv\Scripts\python.exe -m dti_tool profile --input examples/request.json`으로 같은 JSON을 받는다. 예측 실행 시점의 프로파일은 `runs/predictions/<run_id>/input-profile.json`에 저장된다. [입력 프로파일 필드와 근거 자료 연결 방법](docs/input-profiler.md)
+**입력 프로파일** 단계에서 분자·서열과 구조 미리보기를 확인한다. 최근 실행 바로 위의 **구조·프로파일 상세**에 분자 특성, 회전 가능한 3D 구조, 모델별 입력 조건이 탭으로 표시된다. 패널 상단에서 전체 JSON을 저장할 수 있다. Python과 MCP에서는 `profile_input`, CLI에서는 `.venv\Scripts\python.exe -m dti_tool profile --input examples/request.json`으로 같은 JSON을 받는다. 예측 실행 시점의 프로파일은 `runs/predictions/<run_id>/input-profile.json`에 저장된다. [입력 프로파일 필드와 근거 자료 연결 방법](docs/input-profiler.md)
 
 프로젝트 폴더에서 실행한다. 기존 추론 환경에 웹 의존성만 추가한다.
 

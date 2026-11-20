@@ -1,6 +1,7 @@
 "use strict";
 
 const flow = {stage: "input", pairKey: "", profile: null, request: null, timer: null, view: "protein", run: null, edited: false, revision: 0};
+let draftProfileTab = "protein";
 const stageCopy = {
   input: ["입력 프로파일", "분자 구조와 표적 서열을 확인하세요."],
   models: ["모델 선택", "예측하려는 값과 입력 조건을 보고 실행 순서를 확인하세요."],
@@ -62,8 +63,10 @@ function updateStageNav() {
 }
 
 function goToStage(stage, focus = true) {
+  const wasInput = flow.stage === "input";
   flow.stage = stage;
   for (const pane of document.querySelectorAll("[data-pane]")) pane.hidden = pane.dataset.pane !== stage;
+  if (wasInput !== (stage === "input")) renderDraftProfile();
   updateStageNav();
   [$("stage-title").textContent, $("stage-description").textContent] = stageCopy[stage];
   if (flow.run && ["execution", "results"].includes(stage)) $("stage-description").textContent = runLabel(flow.run) + " · " + date(flow.run.created_at);
@@ -83,11 +86,7 @@ function renderSpecimen() {
   body.replaceChildren();
   $("view-protein").setAttribute("aria-pressed", String(flow.view === "protein"));
   $("view-drug").setAttribute("aria-pressed", String(flow.view === "compound"));
-  $("preview-profile").disabled = !profile;
-  $("preview-profile-label").textContent = profile?.status === "error" ? "입력 오류 상세" : "구조·프로파일 상세";
   const ref = profile?.protein?.reference_structures?.records?.[0];
-  $("preview-profile-summary").textContent = [profile?.compound?.formula,
-    profile?.protein && profile.protein.length + " aa", ref && "PDB " + ref.pdb_id].filter(Boolean).join(" · ");
   if (!profile) {
     body.append(element("p", flow.request ? "입력 정보를 확인하고 있습니다…" : "화합물과 서열을 입력하거나 예시를 선택하세요.", "specimen-empty"));
     return;
@@ -151,7 +150,7 @@ function loadDraftProfile() {
     return null;
   }).finally(() => {
     if (flow.request !== request) return;
-    flow.request = null; renderSpecimen(); renderPlan(); updateStageNav();
+    flow.request = null; renderSpecimen(); renderDraftProfile(); renderPlan(); updateStageNav();
   });
   return request.promise;
 }
@@ -174,7 +173,7 @@ function changedPair(immediate = false, keepRun = false) {
   clearTimeout(flow.timer); flow.request?.controller.abort(); flow.request = null;
   flow.profile = null; flow.pairKey = "";
   if (!keepRun) clearRunView();
-  updateProfileStatus(""); renderSpecimen(); renderPlan();
+  updateProfileStatus(""); renderSpecimen(); renderDraftProfile(); renderPlan();
   const pair = draftPair();
   if (pair.smiles.trim() && pair.protein_sequence.trim()) {
     if (immediate) loadDraftProfile();
@@ -224,24 +223,50 @@ function renderExecution() {
   }
 }
 
-function openProfileSnapshot(profile, complexUrl, tabIndex = 0) {
+function profileJsonUrl(profile) {
+  return URL.createObjectURL(new Blob([JSON.stringify(profile, null, 2)], {type: "application/json"}));
+}
+
+function renderDraftProfile() {
+  const body = $("draft-profile"), link = $("draft-profile-download");
+  if (link.hasAttribute("href")) {
+    URL.revokeObjectURL(link.href);
+    link.removeAttribute("href");
+  }
+  const profile = flow.stage === "input" && flow.profile;
+  $("preview-profile").hidden = !profile;
+  body.replaceChildren();
+  if (!profile) return;
+  link.href = profileJsonUrl(profile);
+  renderInputProfile(body, profile, {selectedView: draftProfileTab, onSelect(view) {
+    draftProfileTab = view;
+    if ((view === "compound" || view === "protein") && view !== flow.view) {
+      flow.view = view; renderSpecimen();
+    }
+  }});
+}
+
+function openProfileSnapshot(profile, complexUrl) {
   openModal("입력 프로파일", []);
-  const url = URL.createObjectURL(new Blob([JSON.stringify(profile, null, 2)], {type:"application/json"}));
+  $("info-modal").classList.add("profile-modal");
+  const url = profileJsonUrl(profile);
   const link = profileLink("전체 프로파일 JSON 저장", url, "input-profile.json");
   $("info-modal").addEventListener("close", () => URL.revokeObjectURL(url), {once:true});
-  renderInputProfile(profile, link, complexUrl);
-  if (tabIndex) $("profile-tab-" + tabIndex)?.click();
+  renderInputProfile($("modal-body"), profile, {complexUrl});
+  $("modal-body").append(link);
 }
 
 function initWorkflow() {
   for (const button of document.querySelectorAll("#stage-nav button")) {
     button.addEventListener("click", () => goToStage(button.dataset.stage));
   }
-  $("view-drug").addEventListener("click", () => { flow.view = "compound"; renderSpecimen(); });
-  $("view-protein").addEventListener("click", () => { flow.view = "protein"; renderSpecimen(); });
-  $("preview-profile").addEventListener("click", () => {
-    if (flow.profile) openProfileSnapshot(flow.profile, null, flow.view === "protein" && flow.profile.compound && flow.profile.protein ? 1 : 0);
-  });
+  for (const [id, view] of [["view-drug", "compound"], ["view-protein", "protein"]]) {
+    $(id).addEventListener("click", () => {
+      flow.view = draftProfileTab = view;
+      renderSpecimen();
+      $("draft-profile").querySelector(`[data-view="${view}"]:not([aria-selected="true"])`)?.click();
+    });
+  }
   $("next-models").addEventListener("click", async () => {
     const pair = draftPair();
     if (!pair.smiles.trim() || !pair.protein_sequence.trim()) {
