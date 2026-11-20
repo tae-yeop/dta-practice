@@ -142,7 +142,7 @@ function loadDraftProfile() {
     const invalid = profile.status !== "success";
     const matches = Object.values(profile.models || {});
     updateProfileStatus(invalid ? fixes[profile.error?.code]?.[0] || profile.error?.message || "입력을 확인하세요."
-      : "입력 확인 · 모델 " + matches.filter(item => item.eligible).length + "/" + matches.length + "개 사용 가능", invalid);
+      : "입력 가능 모델 " + matches.filter(item => item.eligible).length + " / " + matches.length + "개", invalid);
     return profile;
   }).catch(error => {
     if (!controller.signal.aborted) updateProfileStatus("프로파일 조회 실패 · " + error.message, true);
