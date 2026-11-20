@@ -15,16 +15,19 @@ MODEL = "CNN_CNN_BindingDB"
 PROJECT = Path(__file__).resolve().parents[1]
 SOURCE_URL = "https://dataverse.harvard.edu/api/access/datafile/4159715"
 SOURCE_CODE = "https://github.com/kexinhuang12345/DeepPurpose/blob/master/DeepPurpose/utils.py"
+RAW_AFFINITY = ({"endpoint": None, "scale": "upstream_log_affinity", "endpoint_status": "unverified"},)
 MODELS = {
     MODEL: {"provider": "deeppurpose", "display_name": "CNN · 서열 DTA", "task": "DTA",
             "default_device": "cpu", "timeout_seconds": 180,
             "description": "SMILES와 단백질 서열의 CNN 회귀 점수",
+            "outputs": RAW_AFFINITY,
             "drug_encoding": "CNN", "target_encoding": "CNN", "source_url": SOURCE_URL,
             "training_dataset": "BindingDB", "limits": {"smiles_characters": 100, "protein_residues": 1000}},
     "MPNN_CNN_BindingDB": {
         "provider": "deeppurpose", "display_name": "MPNN · 약물 그래프 DTA", "task": "DTA",
         "default_device": "cpu", "timeout_seconds": 180,
         "description": "약물 2D 그래프와 단백질 CNN 회귀 점수",
+        "outputs": RAW_AFFINITY,
         "drug_encoding": "MPNN", "target_encoding": "CNN",
         "source_url": "https://dataverse.harvard.edu/api/access/datafile/4204178",
         "training_dataset": "BindingDB",
@@ -35,6 +38,7 @@ MODELS = {
         "provider": "conplex", "display_name": "ConPLex · DTI", "task": "DTI",
         "default_device": "cpu", "timeout_seconds": 900,
         "description": "Morgan fingerprint + ProtBert 상호작용 점수; 확률 아님",
+        "outputs": [{"endpoint": "interaction_score", "scale": "cosine_similarity"}],
         "drug_encoding": "Morgan", "target_encoding": "ProtBert",
         "source_url": "https://github.com/samsledje/ConPLex",
         "setup_command": ".venv\\Scripts\\python.exe scripts/setup_conplex.py",
@@ -44,11 +48,13 @@ MODELS = {
         "provider": "boltz2", "display_name": "Boltz-2 · 구조 + affinity", "task": "DTA_DTI_structure",
         "default_device": "cuda", "timeout_seconds": 3600,
         "description": "복합체 구조 예측과 affinity·binder probability; MSA 없는 로컬 실행",
+        "outputs": [{"endpoint": "IC50", "scale": "log10_IC50_uM"}, {"endpoint": "binder", "scale": "binding_probability"},
+                    {"endpoint": "predicted_complex", "format": "cif"}],
         "drug_encoding": "3D_complex", "target_encoding": "3D_complex",
         "source_url": "https://github.com/jwohlwend/boltz",
         "setup_command": ".venv\\Scripts\\python.exe scripts/setup_boltz2.py",
         "training_dataset": "Boltz-2 upstream datasets",
-        "limits": {"protein_residues": 800, "heavy_atoms": 128},
+        "limits": {"protein_residues": 800, "heavy_atoms": 128, "ligand_atoms": 128, "recommended_ligand_atoms": 56},
     },
 }
 DEEPPURPOSE_MODELS = tuple(name for name, spec in MODELS.items() if spec["provider"] == "deeppurpose")

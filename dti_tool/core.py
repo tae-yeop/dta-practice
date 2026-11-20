@@ -12,12 +12,10 @@ import threading
 import time
 
 from . import __version__
+from .input_rules import input_checks, normalize_sequence, parse_ligand, require_compatible
 from .models import MODEL, MODELS, ToolError, adapter_module, check_model, model_spec, sha256
 from .processes import device_lock
 
-AMINO_ACIDS = frozenset("ACDEFGHIKLMNPQRSTVWY")
-# DeepPurpose 0.1.5 CNN vocabulary, excluding its '?' padding/unknown token.
-SMILES_CHARS = frozenset("#%)(+-.1032547698=ACBEDGFIHKMLONPSRUTWVY[Z]_acbedgfihmlonsruty")
 _INFERENCE_LOCK = threading.Lock()
 
 
@@ -49,41 +47,14 @@ def error_result(code, message, elapsed=0):
 
 
 def validate_inputs(smiles, protein_sequence, model, device):
-    spec = model_spec(model)
+    model_spec(model)
     if not isinstance(device, str) or device not in {"cpu", "cuda", "auto"}:
         raise ToolError("INVALID_ARGUMENT", "device must be cpu, cuda or auto.")
-    if not isinstance(smiles, str) or not isinstance(protein_sequence, str):
-        raise ToolError("INVALID_ARGUMENT", "smiles and protein_sequence must be strings.")
-    drug = smiles.strip()
-    sequence = "".join(protein_sequence.split()).upper()
-    if not drug or not sequence:
-        raise ToolError("INVALID_ARGUMENT", "Both SMILES and protein sequence are required.")
-    sequence_limit = spec["limits"]["protein_residues"]
-    if len(sequence) > sequence_limit:
-        raise ToolError("INPUT_TOO_LONG", f"{model} adapter limit: {sequence_limit} residues. No automatic truncation is performed.")
-    if spec["drug_encoding"] == "CNN" and len(drug) > 100:
-        raise ToolError("INPUT_TOO_LONG", "Drug CNN limit: 100 SMILES characters. No automatic truncation is performed.")
-    if set(sequence) - AMINO_ACIDS:
-        raise ToolError("UNSUPPORTED_SEQUENCE", "Use a plain sequence of the 20 canonical amino acids; do not include a FASTA header or ambiguous residues.")
-    from rdkit import Chem
-    from rdkit import rdBase
-    with rdBase.BlockLogs():
-        molecule = Chem.MolFromSmiles(drug)
-    if molecule is None or molecule.GetNumAtoms() == 0:
-        raise ToolError("INVALID_SMILES", "RDKit could not parse and sanitize this SMILES.")
-    if len(Chem.GetMolFrags(molecule)) != 1 or any(atom.GetAtomicNum() == 0 for atom in molecule.GetAtoms()):
-        raise ToolError("UNSUPPORTED_MOLECULE", "This first tool supports a single connected molecule without wildcard atoms. Salt stripping is not automatic.")
-    if "heavy_atoms" in spec["limits"] and molecule.GetNumHeavyAtoms() > spec["limits"]["heavy_atoms"]:
-        raise ToolError("INPUT_TOO_LONG", f"{model} accepts at most {spec['limits']['heavy_atoms']} heavy ligand atoms.")
-    if spec["drug_encoding"] == "CNN" and set(drug) - SMILES_CHARS:
-        raise ToolError("UNSUPPORTED_SMILES_TOKEN", "The SMILES contains characters unsupported by this checkpoint's CNN vocabulary.")
-    if spec["drug_encoding"] == "MPNN":
-        limits = spec["limits"]
-        if molecule.GetNumAtoms() > limits["atoms"] or 2 * molecule.GetNumBonds() + 1 > limits["directed_bond_slots"]:
-            raise ToolError("INPUT_TOO_LONG", "MPNN limits: 400 atoms and 800 directed bond slots (2 per bond + 1 padding). No truncation is performed.")
-        if any(atom.GetDegree() > limits["neighbors"] for atom in molecule.GetAtoms()):
-            raise ToolError("UNSUPPORTED_MOLECULE", "MPNN supports at most 6 neighbors per atom.")
-    return drug, sequence, Chem.MolToSmiles(molecule, isomericSmiles=True)
+    sequence = normalize_sequence(protein_sequence)
+    ligand = parse_ligand(smiles)
+    require_compatible(input_checks(ligand, sequence, model))
+    return ligand.smiles, sequence, ligand.canonical
+
 
 
 class _PrimitiveConfigUnpickler(pickle.Unpickler):

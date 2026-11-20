@@ -12,7 +12,8 @@ import time
 import urllib.request
 import uuid
 
-from .models import PROJECT, ToolError, cache_root, sha256
+from .input_rules import input_checks, normalize_sequence, parse_ligand, require_compatible
+from .models import PROJECT, ToolError, cache_root, model_spec, sha256
 
 MODEL = "Boltz2"
 VERSION = "2.2.1"
@@ -30,7 +31,7 @@ SPEC = {
     "source_url": "https://huggingface.co/boltz-community/boltz-2/tree/" + HF_REVISION,
     "training_dataset": "Boltz-2 structure and affinity training collections; see upstream paper",
     "task": "DTA_DTI", "default_device": "cuda", "timeout_seconds": 3600,
-    "limits": {"protein_residues": 800, "ligand_atoms": 128, "recommended_ligand_atoms": 56},
+    "limits": model_spec(MODEL)["limits"],
     "limits_note": "Protein limit is local resource policy; ligand counts follow RDKit RemoveHs. No truncation.",
     "setup_command": ".venv\\Scripts\\python.exe scripts/setup_boltz2.py",
 }
@@ -174,16 +175,9 @@ def prepare(archive=None):
 
 
 def validate(drug, sequence):
-    from rdkit import Chem
-    if len(sequence) > SPEC["limits"]["protein_residues"]:
-        raise ToolError("INPUT_TOO_LONG", "Boltz-2 local resource policy limits protein length to 800 residues. No truncation.")
-    mol = Chem.MolFromSmiles(drug)
-    if mol is None:
-        raise ToolError("INVALID_SMILES", "RDKit could not parse the Boltz-2 ligand.")
-    atoms = Chem.RemoveHs(mol).GetNumAtoms()
-    if atoms > 128:
-        raise ToolError("INPUT_TOO_LONG", "Boltz-2 affinity supports at most 128 atoms counted after RDKit RemoveHs.")
-    return atoms
+    checks = input_checks(parse_ligand(drug), normalize_sequence(sequence), MODEL)
+    require_compatible(checks)
+    return next(check["observed"] for check in checks if check["rule"] == "atoms_after_remove_hs")
 
 
 def make_input(drug, sequence):
@@ -222,7 +216,7 @@ def parse_outputs(output, atom_count):
                 "Binding probability is an upstream classifier output, not locally calibrated evidence of binding.",
                 "Structure confidence is separate from binding probability and affinity uncertainty.",
                 "The affinity value is predicted log10(IC50 in micromolar), not an experimental measurement or Kd."]
-    if atom_count > 56:
+    if atom_count > SPEC["limits"]["recommended_ligand_atoms"]:
         warnings.append("Ligand exceeds the upstream recommended training range of 56 atoms.")
     return {"task": "DTA_DTI", "prediction": {"raw_value": value, "endpoint": "IC50",
                 "scale": "log10_IC50_uM", "higher_is_stronger": False,
