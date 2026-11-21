@@ -8,6 +8,7 @@ import pytest
 @pytest.fixture(autouse=True)
 def isolated_run_history(tmp_path, monkeypatch):
     monkeypatch.setenv("DTI_RUNS_DIR", str(tmp_path / "predictions"))
+    monkeypatch.setenv("DTI_EVIDENCE_CACHE", str(tmp_path / "public-evidence"))
 
 
 def pytest_configure(config):

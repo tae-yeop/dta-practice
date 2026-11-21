@@ -9,14 +9,16 @@ from .input_rules import input_checks, normalize_sequence, parse_ligand
 from .models import MODELS, PROJECT, ToolError
 from .profile_references import audit_training, lookup_evidence
 from .profile_structures import ligand_structures, protein_structures
+from .public_evidence import public_evidence
 
-SCHEMA_VERSION = "1.1"
+SCHEMA_VERSION = "1.2"
 
 
 def profile_schema():
-    return {"name": "profile_input", "description": "Inspect a SMILES and protein sequence offline. Returns chemical descriptors, ligand structure and conformer, available experimental target structure references, model input checks and sourced evidence.",
+    return {"name": "profile_input", "description": "Inspect an input pair offline or explicitly refresh its public experiment and structure evidence.",
             "inputSchema": {"type": "object", "additionalProperties": False, "required": ["smiles", "protein_sequence"],
-                            "properties": {name: {"type": "string"} for name in ("smiles", "protein_sequence")}}}
+                            "properties": {"smiles": {"type": "string"}, "protein_sequence": {"type": "string"},
+                                           "refresh_evidence": {"type": "boolean", "default": False}}}}
 
 
 def profile_error(code, message):
@@ -25,8 +27,10 @@ def profile_error(code, message):
 
 
 def execute_profile(arguments):
-    if not isinstance(arguments, dict) or set(arguments) != {"smiles", "protein_sequence"}:
-        return profile_error("INVALID_ARGUMENT", "Supply smiles and protein_sequence as the two profile fields.")
+    if (not isinstance(arguments, dict) or not {"smiles", "protein_sequence"} <= arguments.keys()
+            or arguments.keys() - {"smiles", "protein_sequence", "refresh_evidence"}
+            or not isinstance(arguments.get("refresh_evidence", False), bool)):
+        return profile_error("INVALID_ARGUMENT", "Supply smiles, protein_sequence and optional boolean refresh_evidence.")
     return profile_input(**arguments)
 
 
@@ -103,10 +107,15 @@ def _model_profile(model, ligand, sequence, stereo):
             "applicability": {"ood_status": "not_assessed", "reason": "validated_model_specific_criteria_unavailable"}}
 
 
-def profile_input(smiles, protein_sequence):
+def profile_input(smiles, protein_sequence, refresh_evidence=False):
     """Profile both components independently, then evaluate every registered model."""
+    if not isinstance(refresh_evidence, bool):
+        return profile_error("INVALID_ARGUMENT", "refresh_evidence must be a boolean.")
     try:
-        return _profile_pair(smiles, protein_sequence)
+        result = _profile_pair(smiles, protein_sequence)
+        if result.get("pair_id"):
+            result["public_evidence"] = public_evidence(result, refresh_evidence)
+        return result
     except ImportError as exc:
         return profile_error("DEPENDENCY_MISSING", str(exc))
     except (OSError, RuntimeError, ValueError, OverflowError) as exc:

@@ -9,6 +9,7 @@ import sys
 from .core import error_result, tool_schema
 from .models import MODEL, MODELS, ToolError, check_model, model_dir, prepare_model
 from .profiler import execute_profile, profile_error
+from .router import execute_route, route_error
 from .runs import execute_run, run_prediction, SOURCES
 
 
@@ -50,6 +51,10 @@ def main():
     profile = commands.add_parser("profile", help="Inspect a pair offline without running a model.")
     profile.add_argument("--input", required=True, help="Pair or prediction request JSON path, or '-' for stdin.")
     profile.add_argument("--output", type=Path, help="Also save the profile as UTF-8 JSON.")
+    profile.add_argument("--refresh-evidence", action="store_true", help="Query public sources and update the offline evidence cache.")
+    route = commands.add_parser("route", help="Plan model selection from cached evidence without inference.")
+    route.add_argument("--input", required=True, help="JSON pair, purpose, optional endpoint and budget_seconds.")
+    route.add_argument("--output", type=Path)
     status_parser = commands.add_parser("status", help="Check package versions and all checkpoint hashes.")
     status_parser.add_argument("--model", choices=list(MODELS), default=MODEL)
     prepare = commands.add_parser("prepare-model", help="Explicitly download the upstream checkpoint.")
@@ -64,6 +69,8 @@ def main():
     worker.add_argument("--id", required=True)
     args = parser.parse_args()
     make_error = profile_error if args.command == "profile" else error_result
+    if args.command == "route":
+        make_error = lambda code, message: route_error(message, code)
     try:
         if args.command == "schema":
             result = tool_schema()
@@ -79,7 +86,11 @@ def main():
             if args.command == "profile":
                 if isinstance(arguments, dict):
                     arguments = {k: v for k, v in arguments.items() if k not in ("model", "models", "device")}
+                    if args.refresh_evidence:
+                        arguments["refresh_evidence"] = True
                 result = execute_profile(arguments)
+            elif args.command == "route":
+                result = execute_route(arguments)
             else:
                 result = run_prediction(arguments, source=args.source, use_skill=args.command == "run")
     except ToolError as exc:

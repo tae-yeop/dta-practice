@@ -51,7 +51,7 @@ def append_event(run_id, event, component, message, **details):
         handle.flush()
 
 
-def create_run(arguments, source="cli", use_skill=False):
+def create_run(arguments, source="cli", use_skill=False, plan=None):
     if source not in SOURCES:
         raise ValueError("Unknown request source.")
     run_id = uuid.uuid4().hex
@@ -60,6 +60,10 @@ def create_run(arguments, source="cli", use_skill=False):
     write_json(folder / "request.json", arguments)
     # Publish metadata last, so readers never see a half-created request.
     append_event(run_id, "request.received", source, "예측 요청을 접수했습니다.", source=source)
+    if plan is not None:
+        write_json(folder / "routing.json", plan)
+        append_event(run_id, "route.selected", "router", plan["reason"], purpose=plan["purpose"],
+                     selected_models=plan["selected_models"], budget_seconds=plan["budget_seconds"])
     metadata = {"run_id": run_id, "source": source, "status": "queued",
                 "created_at": now(), "finished_at": None, "use_skill": use_skill}
     write_json(folder / "run.json", metadata)

@@ -1,6 +1,7 @@
 """Loopback-only web UI over the same recorded tool used by agents."""
 
 import asyncio
+from collections import OrderedDict
 from contextlib import asynccontextmanager
 import json
 import os
@@ -8,6 +9,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+from uuid import uuid4
 
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -19,6 +21,7 @@ from starlette.staticfiles import StaticFiles
 from dti_tool.__main__ import status
 from dti_tool.models import PROJECT
 from dti_tool.profiler import execute_profile
+from dti_tool.router import execute_route
 from dti_tool.profile_structures import structure_catalog
 from dti_tool.processes import process_options, request_timeout, terminate_process_tree
 from dti_tool.runs import create_run, fail_run, get_run, list_runs, run_dir
@@ -117,7 +120,33 @@ async def profile(request):
     arguments = await request_object(request)
     if isinstance(arguments, JSONResponse):
         return arguments
-    return JSONResponse(await asyncio.to_thread(execute_profile, arguments))
+    result = await asyncio.to_thread(execute_profile, arguments)
+    response = JSONResponse(result)
+    if result.get("status") == "success":
+        response.headers["X-Profile-Token"] = remember(request.app.state.profiles, result)
+    return response
+
+
+def remember(cache, value):
+    token = uuid4().hex
+    cache[token] = value
+    if len(cache) > 32:
+        cache.popitem(last=False)
+    return token
+
+
+async def model_route(request):
+    arguments = await request_object(request)
+    if isinstance(arguments, JSONResponse):
+        return arguments
+    saved = request.app.state.profiles.get(request.headers.get("x-profile-token"))
+    pair = {k: arguments.get(k) for k in ("smiles", "protein_sequence")}
+    profile = saved if saved and saved.get("original") == pair else None
+    plan = await asyncio.to_thread(execute_route, arguments, profile)
+    response = JSONResponse(plan)
+    if plan.get("action") == "execute":
+        response.headers["X-Route-Token"] = remember(request.app.state.plans, (pair, plan))
+    return response
 
 
 async def history(request):
@@ -128,7 +157,15 @@ async def history(request):
     arguments = await request_object(request)
     if isinstance(arguments, JSONResponse):
         return arguments
-    metadata = await asyncio.to_thread(create_run, arguments, "web", True)
+    plan = None
+    if "x-route-token" in request.headers:
+        saved = request.app.state.plans.get(request.headers["x-route-token"])
+        models = arguments.get("models", [arguments.get("model")])
+        if (not saved or saved[0] != {k: arguments.get(k) for k in ("smiles", "protein_sequence")}
+                or models != saved[1]["selected_models"]):
+            return JSONResponse({"error": "입력과 추천 계획을 다시 확인하세요."}, status_code=409)
+        plan = saved[1]
+    metadata = await asyncio.to_thread(create_run, arguments, "web", True, plan)
     task = asyncio.create_task(run_worker(metadata["run_id"], request.app.state.semaphore))
     request.app.state.tasks.add(task)
     task.add_done_callback(request.app.state.tasks.discard)
@@ -146,7 +183,7 @@ async def detail(request):
 async def download(request):
     kind = request.path_params["kind"]
     files = {"result": ("result.json", "application/json"), "events": ("events.jsonl", "application/x-ndjson"),
-             "profile": ("input-profile.json", "application/json")}
+             "profile": ("input-profile.json", "application/json"), "route": ("routing.json", "application/json")}
     try:
         name, media_type = files[kind]
         path = run_dir(request.path_params["run_id"]) / name
@@ -197,6 +234,7 @@ def create_app():
     app = Starlette(lifespan=lifespan, routes=[
         Route("/", index), Route("/api/status", health), Route("/api/examples", examples),
         Route("/api/profile", profile, methods=["POST"]),
+        Route("/api/route", model_route, methods=["POST"]),
         Route("/api/structures/{pdb}.cif", reference_structure),
         Route("/api/runs/{run_id}/complex.cif", predicted_complex),
         Route("/api/runs", history, methods=["GET", "POST"]),
@@ -204,6 +242,8 @@ def create_app():
         Route("/api/runs/{run_id}/download/{kind}", download),
         Mount("/static", StaticFiles(directory=STATIC), name="static"),
     ])
+    app.state.profiles = OrderedDict()
+    app.state.plans = OrderedDict()
     app.add_middleware(LocalRequests)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
     return app

@@ -12,6 +12,7 @@ sys.path.insert(0, str(PROJECT))
 
 from dti_tool.core import error_result, tool_schema
 from dti_tool.profiler import profile_error, profile_schema
+from dti_tool.router import route_schema, route_error
 from dti_tool.runs import create_run, fail_run
 from dti_tool.processes import process_options, request_timeout, terminate_process_tree
 from mcp.server.lowlevel import Server
@@ -55,31 +56,35 @@ def run_worker(arguments):
 
 @server.list_tools()
 async def list_tools():
-    return [Tool(**schema(), annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False))
-            for schema in (tool_schema, profile_schema)]
+    return [Tool(**schema(), annotations=ToolAnnotations(readOnlyHint=schema is route_schema, destructiveHint=False,
+                                                         openWorldHint=schema is profile_schema))
+            for schema in (tool_schema, profile_schema, route_schema)]
 
 
-def profile_worker(arguments):
-    if not isinstance(arguments, dict) or set(arguments) != {"smiles", "protein_sequence"}:
-        return profile_error("INVALID_ARGUMENT", "Supply smiles and protein_sequence.")
+def observation_worker(name, arguments):
+    schema = (profile_schema if name == "profile_input" else route_schema)()["inputSchema"]
+    if (not isinstance(arguments, dict) or not set(schema["required"]) <= arguments.keys()
+            or arguments.keys() - schema["properties"].keys()):
+        return profile_error("INVALID_ARGUMENT", "Invalid profile fields.") if name == "profile_input" else route_error("Invalid route fields.")
     python = os.environ.get("DTI_INFERENCE_PYTHON", str(DEFAULT_PYTHON))
     try:
-        worker = subprocess.run([python, "-m", "dti_tool", "profile", "--input", "-"], cwd=PROJECT,
+        command = "profile" if name == "profile_input" else "route"
+        worker = subprocess.run([python, "-m", "dti_tool", command, "--input", "-"], cwd=PROJECT,
                                 input=json.dumps(arguments), text=True, encoding="utf-8", capture_output=True,
                                 timeout=180, **process_options())
         result = json.loads(worker.stdout)
-        if worker.returncode != {"success": 0, "error": 2}[result["status"]] or result["tool"] != "profile_input":
+        if worker.returncode != {"success": 0, "error": 2}[result["status"]] or result["tool"] != name:
             raise ValueError("Unexpected profile worker response.")
         return result
     except (OSError, ValueError, TypeError, KeyError, subprocess.TimeoutExpired) as exc:
-        return profile_error("PROFILE_WORKER_FAILED", str(exc))
+        return profile_error("PROFILE_WORKER_FAILED", str(exc)) if name == "profile_input" else route_error(str(exc))
 
 
 @server.call_tool(validate_input=False)
 async def call_tool(name, arguments):
     # The CLI applies the same validation and JSON error envelope for all clients.
-    if name == "profile_input":
-        result = await asyncio.to_thread(profile_worker, arguments)
+    if name in ("profile_input", "route_models"):
+        result = await asyncio.to_thread(observation_worker, name, arguments)
     elif name != "predict_dta":
         result = error_result("UNKNOWN_TOOL", f"Unknown tool: {name}")
     else:

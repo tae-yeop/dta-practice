@@ -25,7 +25,9 @@ def test_mcp_discovery_and_error_contract(tmp_path):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 listed = await session.list_tools()
-                assert [item.name for item in listed.tools] == ["predict_dta", "profile_input"]
+                assert [item.name for item in listed.tools] == ["predict_dta", "profile_input", "route_models"]
+                plan = await session.call_tool("route_models", {"smiles": "CCO", "protein_sequence": "ACDEFGHIK", "purpose": "measurements"})
+                assert plan.structuredContent["action"] == "lookup_evidence"
                 profile = await session.call_tool("profile_input", {"smiles": "CCO", "protein_sequence": "ACDEFGHIK"})
                 assert not profile.isError and profile.structuredContent["compound"]["formula"] == "C2H6O"
                 assert listed.tools[0].inputSchema["additionalProperties"] is False
