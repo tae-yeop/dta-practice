@@ -125,32 +125,45 @@ function updateProfileStatus(message, isError = false) {
   $("input-feedback").classList.toggle("error", isError);
 }
 
-function loadDraftProfile() {
+function loadDraftProfile(refresh = false) {
   clearTimeout(flow.timer);
   const pair = draftPair(), key = JSON.stringify(pair);
   if (!pair.smiles.trim() || !pair.protein_sequence.trim()) return Promise.resolve(null);
-  if (key === flow.pairKey && flow.profile) return Promise.resolve(flow.profile);
   if (flow.request?.key === key) return flow.request.promise;
+  if (!refresh && key === flow.pairKey && flow.profile) return Promise.resolve(flow.profile);
   flow.request?.controller.abort();
   const controller = new AbortController();
   const request = {key, controller};
   flow.request = request;
+  if (refresh) {
+    if ($("route-purpose").value) chosenModels = new Set(flow.manualModels || defaultModels);
+    resetRouting();
+    renderModelChoices();
+    $("refresh-public-evidence").disabled = true;
+    $("evidence-notice").textContent = "PubChem·PDBe·RCSB에서 이 입력의 기록을 조회하고 있습니다…";
+  }
   renderSpecimen();
   request.promise = api("/api/profile", {method: "POST", headers: {"Content-Type": "application/json"},
-    body: key, signal: controller.signal}).then(profile => {
+    body: refresh ? JSON.stringify({...pair, refresh_evidence:true}) : key, signal: controller.signal},
+    response => { request.token = response.headers.get("X-Profile-Token"); }).then(profile => {
     if (flow.request !== request) return null;
-    flow.pairKey = key; flow.profile = profile;
+    flow.pairKey = key; flow.profile = profile; flow.profileToken = request.token;
+    if (refresh) { draftProfileTab = "evidence"; $("evidence-notice").textContent = ""; }
     const invalid = profile.status !== "success";
     const matches = Object.values(profile.models || {});
     updateProfileStatus(invalid ? fixes[profile.error?.code]?.[0] || profile.error?.message || "입력을 확인하세요."
       : "입력 가능 모델 " + matches.filter(item => item.eligible).length + " / " + matches.length + "개", invalid);
     return profile;
   }).catch(error => {
-    if (!controller.signal.aborted) updateProfileStatus("프로파일 조회 실패 · " + error.message, true);
+    if (!controller.signal.aborted) {
+      updateProfileStatus("프로파일 조회 실패 · " + error.message, true);
+      if (refresh) $("evidence-notice").textContent = error.message;
+    }
     return null;
   }).finally(() => {
     if (flow.request !== request) return;
     flow.request = null; renderSpecimen(); renderDraftProfile(); renderPlan(); updateStageNav();
+    if (flow.stage === "models" && $("route-purpose").value) updateRouting();
   });
   return request.promise;
 }
@@ -172,6 +185,11 @@ function changedPair(immediate = false, keepRun = false) {
   flow.edited = true;
   clearTimeout(flow.timer); flow.request?.controller.abort(); flow.request = null;
   flow.profile = null; flow.pairKey = "";
+  if (!keepRun && $("route-purpose").value) {
+    chosenModels = new Set(flow.manualModels || defaultModels);
+    renderModelChoices();
+  }
+  flow.profileToken = null; resetRouting(); $("evidence-notice").textContent = "";
   if (!keepRun) clearRunView();
   updateProfileStatus(""); renderSpecimen(); renderDraftProfile(); renderPlan();
   const pair = draftPair();
@@ -188,7 +206,7 @@ function renderPlan() {
   const residues = $("protein").value.replace(/\s/g, "").length;
   list.append(element("p", example?.label || (residues ? "직접 입력 · " + residues + " aa" : "입력 대기"), "plan-pair"));
   const order = [...chosenModels].filter(id => modelCatalog.has(id));
-  if (!order.length) list.append(element("p", "실행할 모델을 선택하세요.", "muted"));
+  if (!order.length && !$("route-purpose").value) list.append(element("p", "실행할 모델을 선택하세요.", "muted"));
   for (const [index, id] of order.entries()) {
     const row = element("div", undefined, "plan-row"), info = element("div");
     const check = flow.profile?.models?.[id];
@@ -199,6 +217,83 @@ function renderPlan() {
     list.append(row);
   }
   if (order.length > 1) list.append(element("p", "선택한 순서대로 한 모델씩 실행합니다.", "plan-device"));
+}
+
+function resetRouting() {
+  flow.routeRequest?.abort();
+  flow.routeRequest = null; flow.route = null; flow.routeToken = null;
+  $("route-purpose").value = "";
+  $("route-summary").replaceChildren();
+  $("endpoint-field").hidden = $("budget-field").hidden = true;
+  $("submit").hidden = false;
+}
+
+async function updateRouting() {
+  const purpose = $("route-purpose").value;
+  flow.routeRequest?.abort(); flow.route = null;
+  clearRunView();
+  if (!purpose) {
+    resetRouting();
+    chosenModels = new Set(flow.manualModels || defaultModels);
+    renderModelChoices(); return;
+  }
+  if (!flow.routeRequest) flow.manualModels = [...chosenModels];
+  const controller = new AbortController();
+  flow.routeRequest = controller;
+  $("endpoint-field").hidden = purpose !== "measurements";
+  $("budget-field").hidden = purpose === "measurements";
+  $("submit").hidden = true;
+  chosenModels = new Set(); renderModelChoices();
+  const root = $("route-summary");
+  root.textContent = "입력과 실행 조건을 확인하고 있습니다…";
+  const args = {...draftPair(), purpose};
+  if (purpose === "measurements" && $("route-endpoint").value) args.endpoint = $("route-endpoint").value;
+  if (purpose !== "measurements" && $("route-budget").value) args.budget_seconds = Number($("route-budget").value);
+  try {
+    const headers = {"Content-Type":"application/json"};
+    if (flow.profileToken) headers["X-Profile-Token"] = flow.profileToken;
+    let routeToken;
+    const route = await api("/api/route", {method:"POST", headers, body:JSON.stringify(args), signal:controller.signal},
+      response => { routeToken = response.headers.get("X-Route-Token"); });
+    if (controller.signal.aborted) return;
+    if (route.status !== "success") throw new Error(route.error.message);
+    flow.route = route; flow.routeToken = routeToken; chosenModels = new Set(route.selected_models); renderModelChoices();
+    root.replaceChildren(element("p", route.reason));
+    if (route.action === "report_evidence") {
+      for (const r of route.measurements.slice(0, 3)) {
+        const line = element("p", [r.endpoint, r.relation, r.value, r.unit].filter(v => v != null).join(" ") + " · ");
+        if (r.aid) line.append(profileLink("AID " + r.aid, r.source_url));
+        else line.append(document.createTextNode(r.reference_id));
+        root.append(line);
+      }
+      root.append(element("p", "조건별 측정 기록 " + route.measurements.length + "건", "field-hint"));
+    }
+    if (route.action === "review_structure") {
+      for (const r of route.structure_matches.slice(0, 3)) root.append(profileLink(r.pdb_id + " · 사슬 " + r.chain + " · " + r.ccd, r.source_url));
+    }
+    for (const [id, a] of Object.entries(route.assessments)) {
+      const row = element("p", undefined, "field-hint");
+      const checks = flow.profile?.models?.[id]?.checks || [];
+      const issues = [...checks.filter(c => c.status === "fail").map(c => profileRules[c.rule] || c.rule),
+        ...a.warnings.map(rule => profileRules[rule] || rule)];
+      const training = a.training?.supervised;
+      if (a.candidate && training?.pair_context === "seen_pair") issues.push("학습에 동일 쌍 관측");
+      if (a.candidate && a.applicability === "review_input_or_domain") issues.push("입력·학습 범위 검토 필요");
+      if (a.candidate && a.applicability === "domain_unassessed") issues.push("학습 범위 미평가");
+      row.append(element("strong", (modelMethods[id]?.name || id) + " · "),
+        document.createTextNode([...a.reasons, ...issues].join(" · "))); root.append(row);
+    }
+    root.append(element("p", "학습 분포 이탈 미평가 · 예측 구간 미보정", "field-hint"));
+    if (route.action === "execute") $("submit").hidden = false;
+    else {
+      const lookup = route.action === "lookup_evidence";
+      const button = element("button", lookup ? "공개 DB 근거 조회" : "입력 근거 보기", "secondary-button"); button.type = "button";
+      button.addEventListener("click", () => {
+        draftProfileTab = "evidence"; goToStage("input"); $("preview-profile").scrollIntoView({block:"start"});
+        if (lookup) loadDraftProfile(true);
+      }); root.append(button);
+    }
+  } catch (error) { if (!controller.signal.aborted) root.textContent = "추천 계획 조회 실패 · " + error.message; }
 }
 
 function renderExecution() {
@@ -234,6 +329,7 @@ function renderDraftProfile() {
     link.removeAttribute("href");
   }
   const profile = flow.stage === "input" && flow.profile;
+  $("refresh-public-evidence").disabled = !profile?.pair_id || !!flow.request;
   $("preview-profile").hidden = !profile;
   body.replaceChildren();
   if (!profile) return;
@@ -257,6 +353,8 @@ function openProfileSnapshot(profile, complexUrl) {
 }
 
 function initWorkflow() {
+  $("refresh-public-evidence").addEventListener("click", () => loadDraftProfile(true));
+  for (const id of ["route-purpose", "route-budget", "route-endpoint"]) $(id).addEventListener("change", updateRouting);
   for (const button of document.querySelectorAll("#stage-nav button")) {
     button.addEventListener("click", () => goToStage(button.dataset.stage));
   }
@@ -280,8 +378,8 @@ function initWorkflow() {
   $("roadmap").addEventListener("click", () => {
     const map = element("ol", undefined, "design-map");
     for (const [name, status, detail, bridge] of [
-      ["추론 전 입력 검사", "프로파일 사용 가능", "분자·서열, 실험 구조, 모델별 입력 조건과 연결된 학습 근거를 확인합니다.",
-        "모델 선택 → 실행 추적 · 사용자가 고른 모델을 순서대로 실행합니다. 자동 라우팅은 설계 단계입니다."],
+      ["추론 전 입력 검사", "사용 가능", "분자·서열과 공개 실험·구조 기록, 모델 입력 조건을 확인합니다.",
+        "모델 선택 → 실행 추적 · 목적과 예산에 맞춰 추천하거나 직접 선택한 모델을 실행합니다."],
       ["출력 정리", "일부 구현", "결과 해석에서 모델별 원시 점수와 예측 대상·척도를 확인합니다. 공통 척도 변환은 설계 단계입니다."],
       ["신뢰도·불일치 검증", "설계 단계", "모델별 오차와 학습 분포 이탈을 평가하고, 예측이 엇갈리면 추가 검증 여부를 판단합니다."],
       ["융합·보정·기권", "설계 단계", "비교 가능한 결과를 통합하고 검증된 예측 구간이나 기권 사유를 보고합니다."],

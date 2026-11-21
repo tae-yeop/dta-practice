@@ -1,4 +1,16 @@
-# 입력 프로파일 v1.1
+# 입력 프로파일 v1.2
+
+**공개 DB 근거 조회**를 누르면 현재 쌍의 실험·구조 자료를 갱신한다. 이후에는 같은 쌍의 로컬 스냅샷을 자동 사용한다. 기본 위치는 `runs/public-evidence/<pair_id>/`이며 `DTI_EVIDENCE_CACHE`로 바꿀 수 있다. 조회 시각, 원자료 링크, 식별 수준과 조회 실패는 `public_evidence`에 저장된다. 갱신에 실패하면 기존에 읽은 기록과 갱신 오류를 함께 반환한다. 예측은 오프라인이다.
+
+- **실험 기록**은 카탈로그에서 확인한 CID 또는 InChIKey와 구조식으로 확인한 CID를 사용한다. 표적은 전체 서열이 일치하는 카탈로그 항목 또는 UniParc 체크섬 검색으로 찾는다. 식별자가 모호하면 `unresolved`로 남긴다. PubChem 요약에서 해당 CID·표적 accession 행을 모으고, 정량값이 있는 행부터 최대 8개 AID의 원자료에서 SID·측정 지표·관계식·값·단위를 확인한다. 나머지는 요약 기록으로 보존한다. 실험 설명에서 확인한 생물종과 변이 언급은 보조 정보이며 개별 실험 구성체의 서열은 미검증이다. [PubChem BioAssay](https://pubchem.ncbi.nlm.nih.gov/docs/bioassays)
+- **구조 기록**은 RCSB 화학 성분의 전체 InChIKey와 PDBe의 해당 표적·리간드 잔기 접촉 기록을 교차 확인한다. 결과는 PDB 엔트리, 표적 사슬, 리간드 CCD 단위이며 실험 구성체의 변이·절단 여부를 함께 검토해야 한다. 표적 참조 구조 미리보기와 리간드 접촉 근거는 별도로 표시한다.
+- **모델 라우터**는 `measurements`, `ranking`, `interaction`, `pose`, `ic50_prediction` 목적을 지원한다. `endpoint`는 실험 조회용 필터이며 `budget_seconds`는 모델별 설정 시간 상한과 비교한다. 반환값에는 모델별 입력 적격성, 목적 적합성, 체크포인트 상태, 예산 충족 여부, 학습 중복 근거와 미보정 상태가 포함된다. 실험값 보고나 기존 구조 검토에는 추론을 실행하지 않는다.
+
+```powershell
+.venv\Scripts\python.exe -m dti_tool profile --input examples/requests/aspirin-cox2.json --refresh-evidence --output runs/profile.json
+```
+
+Python에서는 `route_models(profile, "measurements", endpoint="IC50")`처럼 이미 계산한 프로파일을 넘긴다. CLI의 `route --input <파일>`, MCP의 `route_models`, HTTP의 `POST /api/route`는 SMILES·서열·목적과 선택 항목인 지표·시간 예산을 받는다. 브라우저는 입력 프로파일을 재사용하고, 추천으로 실행한 경우 `routing.json`에 선택 근거를 기록한다.
 
 워크벤치의 **입력 프로파일**은 편집 중인 입력을 검사한다. 첫 화면에서 화합물의 2D 구조식과 단백질 실험 구조의 미리보기를 전환할 수 있다. 단백질 미리보기 이미지는 저장소에 포함된 mmCIF의 지정 사슬을 3Dmol.js로 렌더링한 것이다. 최근 실행 위의 **구조·프로파일 상세**에는 현재 입력을 검사한 결과가 바로 표시된다. 결과 화면의 **저장된 입력 프로파일**을 누르면 예측을 시작할 때 기록한 값이 모달에 열린다. 양쪽 모두 전체 JSON을 저장할 수 있다.
 

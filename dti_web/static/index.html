@@ -60,7 +60,8 @@
         </section>
         <div class="stage-actions"><span id="input-feedback" role="status"></span><button id="next-models" class="primary" type="button">모델 선택으로 <span aria-hidden="true">→</span></button></div>
         <section id="preview-profile" aria-labelledby="draft-profile-title" hidden>
-          <div class="section-heading"><h2 id="draft-profile-title">구조·프로파일 상세</h2><a id="draft-profile-download" class="download" download="input-profile.json">전체 프로파일 JSON 저장</a></div>
+          <div class="section-heading"><h2 id="draft-profile-title">구조·프로파일 상세</h2><div class="evidence-actions"><button type="button" id="refresh-public-evidence" class="secondary-button">공개 DB 근거 조회</button><a id="draft-profile-download" class="download" download="input-profile.json">전체 프로파일 JSON 저장</a></div></div>
+          <p id="evidence-notice" class="field-hint" role="status"></p>
           <div id="draft-profile"></div>
         </section>
         <section class="recent-section" aria-labelledby="recent-heading">
@@ -70,6 +71,11 @@
       </div>
       <div class="stage-pane model-layout" data-pane="models" hidden>
         <section class="model-setup sheet-panel">
+          <div class="route-fields">
+            <label>분석 목적<select id="route-purpose"><option value="">직접 모델 선택</option><option value="measurements">기존 실험값 확인</option><option value="ranking">빠른 후보 순위 탐색</option><option value="interaction">상호작용 점수</option><option value="pose">결합 자세 확인</option><option value="ic50_prediction">IC50 예측</option></select></label>
+            <label id="endpoint-field" hidden>측정 지표<select id="route-endpoint"><option value="">모든 지표</option><option>IC50</option><option>Ki</option><option>Kd</option><option>EC50</option></select></label>
+            <label id="budget-field" hidden>모델 시간 예산<select id="route-budget"><option value="">제한 없음</option><option value="180">3분</option><option value="900">15분</option><option value="3600">60분</option></select></label>
+          </div>
           <fieldset class="field model-field"><legend>사용 모델 <span id="model-selection-count" class="muted"></span></legend>
             <div id="model-selection" class="model-options"><p class="field-hint">모델 목록을 불러오는 중…</p></div>
             <p class="field-hint" id="model-selection-hint">선택한 모델만 순차 실행합니다. Boltz-2는 별도로 선택하세요.</p>
@@ -78,7 +84,7 @@
           <div class="device-field"><label for="device-selection">실행 장치</label><select id="device-selection" name="device" aria-describedby="device-hint"><option value="auto">자동 · 모델별 권장 장치</option><option value="cpu">CPU · 모든 선택 모델</option><option value="cuda">GPU · 모든 선택 모델에 CUDA 강제</option></select></div>
           <p class="field-hint" id="device-hint" aria-live="polite"></p>
         </section>
-        <section class="sheet-panel"><h2>실행 계획</h2><div id="plan-summary" aria-live="polite"></div></section>
+        <section class="sheet-panel"><h2>실행 계획</h2><div id="route-summary" aria-live="polite"></div><div id="plan-summary" aria-live="polite"></div></section>
         <div class="stage-actions"><p id="form-note" class="form-note" role="status"></p><button id="submit" class="primary" type="submit">예측 실행 <span aria-hidden="true">→</span></button></div>
       </div>
     </form>

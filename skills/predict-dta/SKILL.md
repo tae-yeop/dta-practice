@@ -15,6 +15,15 @@ its result. Use the model's observed checks, warnings and output endpoint with
 the user's requested task. Training matches are scoped to the named checkpoint,
 stage and manifest. Preserve unknown overlap and unassessed OOD in your answer.
 
+For model choice call `route_models` (CLI: `route --input request.json`) with the
+pair, purpose and optional budget_seconds. Use `measurements` plus optional
+endpoint for reported assays, `pose` for structural evidence, `ranking` for
+screening, `interaction` for an interaction score or `ic50_prediction` for
+predicted IC50. Read the returned action and candidate reasons before running
+a model. With public lookup requested, call `profile_input` with
+`refresh_evidence: true` first. Preserve assay qualifiers, experiment context,
+lookup coverage and uncertainty about the experimental construct.
+
 | Model ID | Output | Execution |
 | --- | --- | --- |
 | `CNN_CNN_BindingDB` | Raw log-affinity; exact endpoint unverified | CPU default, SMILES ≤100 characters |

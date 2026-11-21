@@ -199,6 +199,33 @@ function showRunComplex(runId) {
 
 function evidencePanel(profile) {
   const panel = element("div");
+  if (profile.public_evidence) {
+    const labels = {matched:"기록 확인", no_match:"조회 범위에서 일치 없음", not_queried:"미조회",
+      unresolved:"식별 정보 미확정", failed:"조회 실패"};
+    for (const [key, title] of [["assays","PubChem 실험 기록"], ["structures","동일 리간드의 실험 구조"]]) {
+      const report = profile.public_evidence[key];
+      if (!report) continue;
+      panel.append(element("h3", title + " · " + (labels[report.status] || report.status)));
+      if (report.retrieved_at) panel.append(element("p", date(report.retrieved_at) +
+        (key === "assays" && report.matched_assays != null ? " · 대상 실험 " + report.matched_assays + "건 중 " + report.reviewed_assays + "건 상세 조회" : ""), "field-hint"));
+      if (report.reason || report.refresh_error) panel.append(element("p", report.refresh_error ? "갱신 실패 · 저장된 기록 표시 · " + report.refresh_error : report.reason));
+      if (report.cache_error) panel.append(element("p", "로컬 저장 실패 · " + report.cache_error));
+      if (report.records.length && key === "structures") panel.append(element("p", "입력 리간드와 접촉한 표적 사슬입니다. 실험 구성체의 변이·절단 여부는 개별 엔트리에서 확인하세요.", "field-hint"));
+      const list = element("ul", undefined, "public-records");
+      for (const r of report.records) {
+        const li = element("li");
+        if (key === "assays") {
+          const value = r.kind === "quantitative" ? [r.endpoint, r.relation || "관계 미확인", r.value, r.unit].join(" ") :
+            [r.endpoint, r.summary_value_um ? r.summary_value_um + " µM (요약값·관계 미확인)" : r.outcome].filter(Boolean).join(" · ");
+          li.append(profileLink("AID " + r.aid, r.source_url), element("strong", value), element("p", r.assay),
+            element("small", ({species_supported:"기재 생물종 일치",accession_only:"표적 accession 일치",variant_mentioned:"변이 기재 · 검토 필요",
+              organism_requires_review:"실험 생물종 검토 필요"}[r.target_context] || "표적 accession 일치") + " · 구성체 미검증" + (r.validity_comment ? " · " + r.validity_comment : "")));
+        } else li.append(profileLink("PDB " + r.pdb_id, r.source_url), element("span", "사슬 " + r.chain + " · 리간드 " + r.ccd));
+        list.append(li);
+      }
+      if (list.childElementCount) panel.append(list);
+    }
+  }
   const pairs = profile.catalog?.pair?.matches || [];
   for (const pair of pairs) {
     panel.append(element("h3", "카탈로그 상호작용 근거"), element("p", pair.note));

@@ -111,6 +111,13 @@ body {color:var(--text)}
 .design-map {padding-left:23px;margin:0}.design-map li {padding:9px 0;border-bottom:1px solid var(--rule)}
 .design-map .pill {margin-left:8px}.design-map p {font-size:13px;color:var(--muted)}
 .design-map .design-bridge {margin:8px 0 2px;padding:6px 10px;border-left:2px solid #92b7a5;background:#f2f7f4}
+.evidence-actions,.route-fields {display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}
+.route-fields {margin-bottom:12px}.route-fields label {display:grid;gap:3px;font-size:12px}
+#route-summary:not(:empty) {margin:12px 0;padding-bottom:10px;border-bottom:1px solid var(--rule)}
+#route-summary button {margin-top:8px}
+.public-records {list-style:none;padding:0;max-height:260px;overflow:auto;margin:6px 0 14px}
+.public-records li {border-bottom:1px solid var(--rule);padding:5px 0}
+.public-records li small {color:var(--muted)}
 @media(min-width:1600px) {.sheet {max-width:1480px}}
 @media(max-width:1060px) {:root {--rail-width:176px}.flow-rail {padding-left:10px}.sheet {padding:18px}.input-layout,.model-layout {gap:0 12px;grid-template-columns:minmax(260px,1fr) minmax(240px,1fr)}.input-panel,.specimen,.sheet-panel {padding:15px}}
 @media(max-width:800px) {

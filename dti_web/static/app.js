@@ -141,6 +141,7 @@ function renderMethods() {
 }
 function time(value) { return new Date(value).toLocaleTimeString("ko-KR", {hour12: false}); }
 function eventVisual(name) {
+  if (name === "route.selected") return {tone: "completed", icon: "M5 12l4 4L19 6", label: "모델 추천"};
   if (name.endsWith("failed")) return {tone: "failed", icon: "M6 6l12 12M18 6L6 18", label: "실패"};
   if (name.endsWith("partial")) return {tone: "partial", icon: "M12 8v5m0 3h.01M12 3L2 21h20Z", label: "일부 완료"};
   if (name.endsWith("completed")) return {tone: "completed", icon: "M5 12l4 4L19 6", label: "완료"};
@@ -214,6 +215,10 @@ function showCallGraph(run) {
     edges.push(["workflow", "skill", "문서 로드", true]);
   }
   node("tool", 2, "predict_dta", "실행 도구", tools);
+  if (matching("route").length) {
+    node("router", 2, "모델 라우터", "모델 선택", matching("route"));
+    edges.push(["workflow", "router", "추천 계획 사용", false]);
+  }
   if (matching("profile").length) {
     node("profile", 2, "입력 프로파일", "입력 검사", matching("profile"));
     edges.push(["workflow", "profile", "프로파일 생성", false]);
@@ -262,10 +267,11 @@ function drawCallEdges(edges) {
   canvas.prepend(svg);
 }
 function date(value) { return new Date(value).toLocaleString("ko-KR", {month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false}); }
-async function api(path, options) {
+async function api(path, options, onResponse) {
   const response = await fetch(path, options);
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  onResponse?.(response);
   return data;
 }
 
@@ -366,6 +372,7 @@ function renderModelChoices() {
     const checkbox = element("input"); checkbox.type = "checkbox"; checkbox.name = "models"; checkbox.value = item.model;
     checkbox.checked = chosenModels.has(item.model); checkbox.defaultChecked = defaultModels.includes(item.model);
     checkbox.addEventListener("change", () => {
+      if ($("route-purpose").value) resetRouting();
       if (checkbox.checked) chosenModels.add(item.model); else chosenModels.delete(item.model);
       clearRunView(); countInputs(); renderPlan();
     });
@@ -515,6 +522,9 @@ function showRun(run) {
     body.append(saved);
   }
   setDownload("download-result", run, "result", Boolean(result));
+  if (run.events.some(e => e.event === "route.selected")) {
+    body.append(profileLink("모델 선택 근거 JSON", "/api/runs/" + run.run_id + "/download/route", "routing.json"));
+  }
   setDownload("download-events", run, "events", true);
   renderTraceSummary(run);
   $("event-count").textContent = `${run.events.length}개 · 최신순`;
@@ -689,8 +699,8 @@ $("toggle-history").addEventListener("click", () => {
 });
 $("prediction-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (state.busy) return;
   if (flow.stage === "input") { $("next-models").click(); return; }
+  if (state.busy || ($("route-purpose").value && flow.route?.action !== "execute")) return;
   const smiles = $("smiles").value, protein_sequence = $("protein").value;
   if (!smiles.trim() || !protein_sequence.trim()) { goToStage("input"); updateProfileStatus("화합물과 단백질 서열을 모두 입력하세요.", true); return; }
   const models = [...chosenModels].filter(name => modelCatalog.has(name));
@@ -700,7 +710,9 @@ $("prediction-form").addEventListener("submit", async (event) => {
   setBusy(true); note("로컬 실행을 요청하고 있습니다.");
   try {
     const selection = models.length === 1 ? {model: models[0]} : {models};
-    const run = await api("/api/runs", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({smiles, protein_sequence, device: $("device-selection").value, ...selection})});
+    const headers = {"Content-Type":"application/json"};
+    if ($("route-purpose").value && flow.routeToken) headers["X-Route-Token"] = flow.routeToken;
+    const run = await api("/api/runs", {method: "POST", headers, body: JSON.stringify({smiles, protein_sequence, device: $("device-selection").value, ...selection})});
     state.submitted = run.run_id;
     if (revision !== flow.revision) { await poll(); return; }
     await selectRun(run.run_id); await poll();
