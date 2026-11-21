@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>DTA 에이전트 개발 로드맵</title>
+  <style>
+    :root {
+      --ink: #1d302c; --muted: #52645e; --accent: #126551; --line: #d8e0db;
+      --frame: #f2f5f2; --wash: #eef6f0; --paper: #fff;
+      --mono: "IBM Plex Mono", Consolas, ui-monospace, monospace;
+      font: 16px/1.58 "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+      color: var(--ink); background: var(--frame); word-break: keep-all; font-variant-numeric: tabular-nums;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    h1, h2, h3, p, ol, dl, dd { margin: 0; }
+    button, select { font: inherit; color: inherit; }
+    button, select, a { -webkit-tap-highlight-color: transparent; }
+    button, select { cursor: pointer; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    .wrap { width: min(1120px, calc(100% - 64px)); margin-inline: auto; }
+    .bar { border-bottom: 1px solid var(--line); }
+    .bar-inner, .brand, .tools, .title-row, .section-head, .phase-meta, .dialog-head {
+      display: flex; align-items: center;
+    }
+    .bar-inner, .title-row, .section-head, .dialog-head { justify-content: space-between; gap: 16px; }
+    .bar-inner { min-height: 50px; }
+    .brand { gap: 13px; font-size: 13px; color: var(--muted); }
+    .brand b { color: var(--ink); font: bold 17px var(--mono); letter-spacing: .02em; }
+    .brand b::before {
+      content: ""; display: inline-block; width: 12px; height: 12px; transform: rotate(-30deg);
+      border: 2px solid var(--accent); border-radius: 4px; margin-right: 9px; vertical-align: -1px;
+    }
+    .brand .divider { width: 1px; height: 14px; background: #bdc8c1; }
+    .tools { gap: 7px; }
+    .control {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      background: transparent; border: 1px solid var(--line); border-radius: 6px;
+      padding: 5px 11px; min-height: 34px; font-size: 13px; font-weight: 600;
+    }
+    .control:hover, select:hover { background: #e9efea; border-color: #afbeb5; }
+    main { padding-block: 28px 42px; }
+    .title-row { align-items: baseline; margin-bottom: 18px; }
+    h1 { font-size: clamp(24px, 2.3vw, 32px); letter-spacing: -.055em; line-height: 1.3; }
+    .date { flex: none; color: var(--muted); font: 12px var(--mono); }
+    .sheet { border: 1px solid var(--line); background: var(--paper); border-radius: 14px; }
+    .phases {
+      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: relative;
+      border-bottom: 1px solid var(--line); padding: 0 22px; isolation: isolate;
+    }
+    .phases::before {
+      content: ""; position: absolute; z-index: -1; top: 31px;
+      left: calc(10% + 18px); right: calc(10% + 18px); border-top: 1px solid #cad5ce;
+    }
+    .phase-link {
+      display: grid; justify-items: center; align-content: start; gap: 3px; min-width: 0;
+      padding: 17px 2px 12px; text-decoration: none; color: var(--muted);
+      border-bottom: 3px solid transparent; transition: color .15s, border-color .15s;
+    }
+    .phase-link:hover { color: var(--accent); }
+    .step-no {
+      display: grid; place-items: center; width: 29px; height: 29px; background: white;
+      border: 1px solid #b8c5bd; border-radius: 50%; font: 600 12px var(--mono); margin-bottom: 2px;
+    }
+    .phase-link b { font-size: 15px; line-height: 1.5; }
+    .phase-link small { font-size: 12px; }
+    .phase-link[aria-current="step"] { color: var(--accent); border-bottom-color: var(--accent); }
+    .phase-link[aria-current="step"] .step-no { color: white; background: var(--accent); border-color: var(--accent); }
+    .phase-detail { padding: 23px 28px 21px; }
+    .phase-meta { gap: 10px; margin-bottom: 4px; color: var(--muted); font-size: 12px; }
+    .phase-id { font-size: 13px; font-weight: 700; color: var(--accent); }
+    .phase-meta .status::before { content: "·"; padding-right: 9px; }
+    h2 { font-size: 22px; line-height: 1.4; letter-spacing: -.045em; }
+    .phase-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 32px; margin-top: 17px; }
+    h3 { font-size: 14px; letter-spacing: -.025em; }
+    .tasks { list-style: none; padding: 0; counter-reset: task; }
+    .tasks li {
+      display: grid; grid-template-columns: 20px 1fr; gap: 8px; counter-increment: task;
+      padding: 8px 0; border-bottom: 1px solid #e7ece8;
+    }
+    .tasks li:last-child { border: 0; padding-bottom: 0; }
+    .tasks li::before { content: counter(task, decimal-leading-zero); color: var(--accent); font: 12px/1.9 var(--mono); }
+    .tasks b { font-size: 15px; }
+    .tasks p, .facts dd { font-size: 14px; line-height: 1.6; color: var(--muted); }
+    .facts { border-left: 1px solid var(--line); padding-left: 24px; }
+    .facts dt { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+    .facts dd + dt { margin-top: 12px; }
+    .criterion {
+      margin-top: 18px; display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 14px;
+      padding: 10px 14px; border-radius: 5px; background: var(--wash); font-size: 14px;
+    }
+    .criterion b { color: var(--accent); white-space: nowrap; }
+    .route-sheet { margin-top: 16px; padding: 19px 28px 20px; }
+    .route-sheet h2, dialog h2 { font-size: 19px; }
+    .section-head { flex-wrap: wrap; }
+    .selectors { display: flex; flex-wrap: wrap; gap: 6px; }
+    select { padding: 5px 7px; min-height: 34px; max-width: 100%; background: white; border: 1px solid #bdc9c0; border-radius: 5px; font-size: 13px; }
+    .route {
+      display: grid; grid-template-columns: 1fr 26px 1fr 26px 1fr; align-items: stretch;
+      margin-top: 14px; list-style: none; padding: 0;
+    }
+    .node { border: 1px solid var(--line); border-radius: 7px; padding: 9px 13px; }
+    .node:last-child { border-color: #a5beb0; background: #f5f9f5; }
+    .node small { display: block; color: var(--muted); font-size: 12px; }
+    .node b { font-size: 15px; }
+    .arrow { align-self: center; text-align: center; color: #61796b; }
+    .route-note { color: var(--muted); font-size: 14px; margin-top: 9px; }
+    dialog {
+      color: var(--ink); border: 1px solid var(--line); border-radius: 12px; background: white;
+      padding: 0; width: min(600px, calc(100% - 32px)); max-height: 85dvh;
+    }
+    dialog::backdrop { background: rgb(20 36 29 / .4); }
+    .dialog-head { padding: 16px 20px; border-bottom: 1px solid var(--line); }
+    .dialog-body { padding: 4px 20px 19px; }
+    .dialog-body dt { font-size: 15px; font-weight: 700; margin-top: 12px; }
+    .dialog-body dd { margin-top: 3px; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+    .calls { margin: 9px 20px 19px; padding-left: 24px; }
+    .calls li { padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .calls li:last-child { border: 0; }
+    .calls li::marker { color: var(--accent); font-variant-numeric: tabular-nums; }
+    .calls p { color: var(--muted); margin-top: 2px; }
+    code { font-family: var(--mono); font-size: .93em; overflow-wrap: anywhere; }
+    .print-only { display: none; }
+    @media (prefers-reduced-motion: no-preference) {
+      .enter { animation: enter .18s ease-out; }
+      @keyframes enter { from { opacity: .65; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+    }
+    @media (max-width: 800px) {
+      .wrap { width: calc(100% - 32px); }
+      .phase-detail, .route-sheet { padding-inline: 18px; }
+      .phase-grid { gap: 20px; grid-template-columns: 1.35fr 1fr; }
+      .facts { padding-left: 16px; }
+    }
+    @media (max-width: 620px) {
+      .wrap { width: calc(100% - 32px); }
+      main { padding-block: 18px 24px; }
+      .bar-inner, .title-row { gap: 6px; }
+      .brand { gap: 7px; }
+      .tools { gap: 4px; }
+      .control { padding-inline: 7px; }
+      .title-row { flex-wrap: wrap; margin-bottom: 13px; }
+      .phases { padding-inline: 4px; }
+      .phases::before { top: 24px; left: 10%; right: 10%; }
+      .phase-link { padding-block: 10px 8px; }
+      .phase-link b { font-size: 13px; }
+      .phase-link small { font-size: 11px; }
+      .phase-detail, .route-sheet { padding: 16px 13px; }
+      h2 { font-size: 20px; }
+      .phase-grid { grid-template-columns: 1fr; gap: 14px; margin-top: 12px; }
+      .facts { display: grid; grid-template-columns: 62px 1fr; align-items: baseline; gap: 5px; padding: 10px 0 0; border: 0; border-top: 1px solid var(--line); }
+      .facts dt, .facts dd + dt { margin: 0; }
+      .criterion { margin-top: 12px; gap: 8px; padding: 8px; }
+      .section-head { gap: 8px; }
+      .route { grid-template-columns: 1fr; margin-top: 10px; }
+      .node { display: grid; grid-template-columns: 86px 1fr; align-items: baseline; gap: 4px; padding: 6px 10px; }
+      .arrow { line-height: 17px; transform: rotate(90deg); justify-self: center; }
+    }
+    @media print {
+      :root { background: white; font-size: 11pt; }
+      .wrap { width: 100%; }
+      main { padding: 0; }
+      .bar, .tools, .phases, .route-sheet, .interactive, dialog { display: none !important; }
+      .print-only { display: block; }
+      .sheet { border: 0; }
+      .phase-detail { break-inside: avoid; border-top: 1px solid #999; padding: 12px 0; }
+      .phase-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+      .facts { display: block; border: 0; }
+      .criterion { padding: 5px 0; }
+      .print-route { break-inside: avoid; margin-top: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="wrap bar-inner">
+      <div class="brand"><b>DTA</b><span class="divider"></span><span>개발 문서</span></div>
+      <div class="tools">
+        <button class="control" type="button" data-dialog="scales">모델 출력표</button>
+        <button class="control" type="button" data-dialog="sources">설계 근거</button>
+      </div>
+    </div>
+  </header>
+  <main class="wrap">
+    <div class="title-row"><h1>DTA 에이전트 개발 로드맵</h1><time class="date" datetime="2026-11-21">2026.11.21</time></div>
+    <noscript>단계별 작업과 라우팅 예시를 보려면 브라우저에서 JavaScript를 켜세요.</noscript>
+    <section class="sheet" aria-label="단계별 개발 계획">
+      <nav class="phases" aria-label="개발 단계"></nav>
+      <div class="interactive" id="detail" aria-live="polite"></div>
+      <div class="print-only" id="print-phases"></div>
+    </section>
+    <section class="sheet route-sheet" aria-labelledby="route-title">
+      <div class="section-head">
+        <h2 id="route-title">목적별 라우팅 예시</h2>
+        <div class="selectors">
+          <select id="purpose" aria-label="조회 또는 예측 목적"></select>
+          <select id="condition" aria-label="입력 프로파일의 근거 상태"></select>
+          <button type="button" class="control" data-dialog="architecture">전체 호출 구조</button>
+        </div>
+      </div>
+      <div id="route-result" aria-live="polite"></div>
+    </section>
+    <section class="print-only" id="print-routes" aria-label="목적별 라우팅 예시"></section>
+  </main>
+  <dialog id="architecture" aria-labelledby="architecture-title">
+    <div class="dialog-head"><h2 id="architecture-title">목표 아키텍처의 호출 구조</h2><button class="control" type="button" data-close>닫기</button></div>
+    <ol class="calls">
+      <li><b>오케스트레이터 → 입력 프로파일러</b><p>SMILES와 단백질 서열을 식별한다. 실험·구조 조회를 요청한 경우 프로파일러가 공개 DB에서 근거를 가져온다.</p></li>
+      <li><b>오케스트레이터 → 모델 라우터</b><p>프로파일과 요청 목적을 넘긴다. 라우터는 적용 가능성과 예산을 평가한다. 실험 근거로 답할 수 있는 요청은 여기서 보고한다.</p></li>
+      <li><b>실행기 → 선택된 모델의 작업자</b><p>모델마다 같은 입력 쌍을 전달한다. 결과 수집기는 성공한 출력과 개별 실패를 모은다. 병렬 실행은 설계안이며 현재 다중 모델 실행은 순차 방식이다.</p></li>
+      <li><b>오케스트레이터 → 출력 정리·신뢰성 평가</b><p>측정 지표가 같은 결과끼리 비교하고, 예상 오차 범위를 벗어난 충돌을 찾는다.</p></li>
+      <li><b>충돌 또는 근거 부족 → 검증 계획 에이전트 → 검증 도구</b><p>추가 검사가 필요할 때만 호출한다. 에이전트가 예산 안에서 확인할 항목을 고르고 결과를 오케스트레이터에 돌려준다.</p></li>
+      <li><b>오케스트레이터 → 결합·보정·보고</b><p>고정된 정책으로 비교 가능한 예측을 결합한다. 예측구간과 판단 근거를 보고하거나 보류 사유를 남긴다.</p></li>
+    </ol>
+  </dialog>
+  <dialog id="scales" aria-labelledby="scales-title">
+    <div class="dialog-head"><h2 id="scales-title">모델 출력표</h2><button class="control" type="button" data-close>닫기</button></div>
+    <dl class="dialog-body">
+      <dt>DeepPurpose CNN · MPNN</dt>
+      <dd><code>upstream_log_affinity</code>는 배포된 체크포인트가 반환하는 원시 로그 점수다. 어떤 실험 지표를 학습했는지 확인되지 않아 농도 단위로 환산할 수 없다. 현재 라우터는 후보 순위 탐색에 사용한다.</dd>
+      <dt>ConPLex</dt>
+      <dd>화합물과 단백질을 각각 벡터로 표현한 뒤 코사인 유사도로 상호작용 점수를 계산한다. 결합 확률로 읽으려면 별도의 보정이 필요하다.</dd>
+      <dt>Boltz-2</dt>
+      <dd>IC50 예측값은 µM 단위 농도의 상용로그다. 값이 낮을수록 예측 IC50이 낮다. 결합 가능성 점수와 복합체 좌표(CIF)는 각각 별도 출력이다. 구조 신뢰도는 좌표에 대한 지표다.</dd>
+      <dt>실험값과 비교할 때</dt>
+      <dd>같은 표적·측정 지표·단위·척도를 맞추고 실험 조건과 부등호를 확인한다. IC50은 주어진 실험 조건에서 50% 억제에 필요한 농도이고, Kd는 결합 평형의 해리 상수다.</dd>
+    </dl>
+  </dialog>
+  <dialog id="sources" aria-labelledby="sources-title">
+    <div class="dialog-head"><h2 id="sources-title">설계 근거</h2><button class="control" type="button" data-close>닫기</button></div>
+    <dl class="dialog-body">
+      <dt>개발 순서와 역할 분담</dt>
+      <dd>로컬 원문 <cite>ChatGPT-DTA 에이전트 구조 비교-20261120-2139.md</cite>의 ‘실제 개발 순서’, ‘온라인 예측과 오프라인 연구’, ‘에이전트 수 자체를 연구 대상으로 만들어 보자’.</dd>
+      <dt>구현 기준</dt>
+      <dd>저장소 버전 <code>bd04db6</code> 기준. <a data-file="docs/input-profiler.md">입력 프로파일 명세</a> · <a data-file="dti_tool/router.py">라우터 분기 조건</a> · <a data-file="dti_tool/models.py">모델별 출력 정의</a></dd>
+    </dl>
+  </dialog>
+  <template id="phase-template">
+    <article class="phase-detail">
+      <div class="phase-meta"><span class="phase-id"></span><span class="status"></span></div>
+      <h2></h2>
+      <div class="phase-grid">
+        <div><h3>개발 작업</h3><ol class="tasks"></ol></div>
+        <dl class="facts"><dt>현재 구현</dt><dd></dd><dt>선행 조건</dt><dd></dd><dt>산출물</dt><dd></dd></dl>
+      </div>
+      <p class="criterion"><b>완료 기준</b><span></span></p>
+    </article>
+  </template>
+  <script>
+  'use strict';
+  const phases = [
+    {
+      label: '입력 분석', status: '일부 구현', title: '학습에 쓰인 화합물과 표적 확인',
+      tasks: [
+        ['기준 체크포인트 하나의 학습 목록 확보', '출처, 버전, 체크포인트 해시와 목록의 완전성을 기록한다. 사전학습과 친화도 지도학습 자료를 따로 둔다.'],
+        ['학습 중복 판정 검증', '화합물만 새롭거나 표적만 새로운 쌍, 둘 다 새로운 쌍, 양쪽은 알려졌지만 조합이 새로운 쌍을 시험한다. 부분 목록에 없는 항목은 미확인으로 둔다.'],
+        ['학습 범위 밖 입력의 오차 측정', '검증 세트에서 화합물 유사도, 단백질 일치도·정렬 범위별 오차를 구한다. 모델 라우터가 쓸 적용 범위 기준을 여기서 정한다.']
+      ],
+      current: '프로파일러가 분자 2D·3D와 단백질 참조 구조를 제공한다. 요청 시 공개 실험·접촉 기록을 조회하고, 학습 목록이 있으면 중복과 최근접 사례도 찾는다.',
+      needs: '체크포인트에 대응하는 학습 목록과 독립 실험값. 검증 전 OOD(학습 분포 이탈) 상태는 미평가다.',
+      output: '입력 쌍별 근거와 출처를 담은 프로파일, 모델별 적용 범위 판정 규칙.',
+      gate: '같은 입력·자료 버전에서 중복 판정이 재현되고, 적용 범위 판정에 쓰인 검증 오차를 추적할 수 있다.'
+    },
+    {
+      label: '모델 실행', status: '일부 구현', title: '같은 입력의 모델 출력을 비교 가능한 그룹으로 묶기',
+      tasks: [
+        ['라우터에 적용 범위 규칙 연결', '프로파일의 관측값, 요청 목적, 체크포인트 준비 상태와 시간 예산으로 실행 모델을 고르고 제외 사유를 남긴다.'],
+        ['모델별 성공과 실패 수집', '각 어댑터에서 원본 값, 가중치 버전, 실행 시간, 오류와 구조 파일을 수집한다. 일부 모델이 실패해도 성공한 결과는 보존한다.'],
+        ['출력 정리 모듈(Output Harmonizer) 작성', '측정 지표·단위·로그 방향을 확인한 값끼리 묶는다. 실험값의 부등호, 변환 전 값, 비교에서 제외한 이유를 함께 저장한다.']
+      ],
+      current: '규칙 기반 라우터와 네 모델의 실행 경로가 있다. 여러 모델을 지정하면 순서대로 실행하고 개별 결과를 보관한다.',
+      needs: '모델별 출력 정의와 1단계 프로파일. 단위 변환·비교 규칙은 적용 범위 검증과 병행해 개발할 수 있다.',
+      output: '선택·제외 사유, 모델별 원본 결과, 측정 지표별 비교 그룹.',
+      gate: 'CNN 원시 점수, ConPLex 상호작용 점수, Boltz-2의 IC50 예측을 각각 추적하고, 단위가 호환되는 값만 같은 척도로 변환한다.'
+    },
+    {
+      label: '결과 보정', status: '계획', title: '실험 오차로 예측구간과 보고 보류 기준 정하기',
+      tasks: [
+        ['실험 데이터를 용도별로 분리', '학습·검증·보정·최종 평가 세트를 고정한다. 평가용 정답이 입력 프로파일의 공개 실험 기록을 통해 노출되는지도 검사한다.'],
+        ['단일 모델과 결합 모델 비교', '동일 지표를 예측하는 모델부터 비교한다. 결합에 쓸 모델이 하나뿐이면 단일 모델 기준선을 평가한다.'],
+        ['예측구간 보정과 기권 정책 평가', '별도 보정 세트로 구간을 만들고 최종 평가에서 실험값 포함률과 구간 폭을 측정한다. 보고할 입력 비율에 따라 오차가 어떻게 달라지는지도 기록한다.']
+      ],
+      current: '모델 결과에는 미보정 상태가 기록된다. 실험값으로 검증한 통합 예측과 예측구간은 개발 대상이다.',
+      needs: '2단계의 비교 가능 그룹, 조건을 확인한 실험 정답, 누출 점검을 마친 데이터 분할.',
+      output: '버전을 고정한 결합·보정 모델, 예측구간, 보고 또는 보류 결정과 사유.',
+      gate: '손대지 않은 평가 세트에서 단일 모델 대비 오차, 구간 포함률·폭, 보고율별 오차를 같은 조건으로 다시 계산할 수 있다.'
+    },
+    {
+      label: '추가 검증', status: '계획', title: '예측이 충돌할 때 실행할 검증 선택',
+      tasks: [
+        ['검증을 시작할 조건 정의', '비교 가능한 예측끼리 충돌하는지, 입력이 학습 범위를 벗어나는지, 근거가 부족한지 구분한다.'],
+        ['원인에 맞는 도구 호출', '오케스트레이터가 검증 계획 에이전트에 근거와 남은 예산을 넘긴다. 에이전트는 실험 조건 재확인이나 구조 검사 등 허용된 작업을 선택한다.'],
+        ['종료와 재보정', '호출 횟수·시간 한도에 도달하면 종료 사유를 기록한다. 검증 뒤 최종 예측을 내는 전체 정책을 고정해 다시 보정·평가한다.']
+      ],
+      current: '실험·구조 조회와 실행 로그가 있다. 충돌을 진단하고 후속 도구를 선택하는 에이전트는 계획 단계다.',
+      needs: '2단계의 비교 그룹과 3단계의 오차 기준, 사용 가능한 도구 목록과 예산.',
+      output: '검증을 요청한 주체, 호출한 도구, 추가 근거, 재판정 또는 보고 보류 사유.',
+      gate: '충돌 입력에서 선택한 도구와 근거가 연결된다. 예산 소진 또는 근거 부족 사례도 종료되며 판단 경로를 다시 확인할 수 있다.'
+    },
+    {
+      label: '비교 평가', status: '계획', title: '에이전트를 추가했을 때의 이득과 비용 측정',
+      tasks: [
+        ['비교할 실행 구성 고정', 'A0 고정 파이프라인, A1 오케스트레이터, A2 오케스트레이터와 검증 에이전트를 비교한다. 전문 에이전트를 더 나눈 A3는 확장 실험으로 둔다.'],
+        ['새로운 입력에서 일반화 측정', '새 화합물, 새 표적, 둘 다 새로운 쌍, 새 화학 골격을 기준으로 분할한다. 같은 입력·모델·도구·예산을 각 구성에 적용한다.'],
+        ['판단 품질과 계산 비용 집계', '최종 오차와 예측구간에 더해 부적절한 모델 선택, 놓친 검증, 불필요한 호출을 평가한다. 실행 시간, GPU 사용량, 토큰, 실패율도 기록한다.']
+      ],
+      current: '실행별 결과와 로그를 보관한다. 동일한 평가 세트에 대한 아키텍처 간 비교 결과는 아직 없다.',
+      needs: '버전이 고정된 실행 정책, 최종 평가 세트, 사람이 판단 근거를 검토한 실행 기록.',
+      output: '분할별 정확도·신뢰성·비용 비교표와 잘못된 도구 선택을 재현할 수 있는 사례.',
+      gate: '같은 입력에서 고정 절차 대비 오차 및 비용 차이를 계산하고, 실패한 사례가 모델 예측과 도구 선택 중 어느 쪽에서 발생했는지 추적할 수 있다.'
+    }
+  ];
+  // Each branch is a documented router outcome for the stated observation.
+  const routes = [
+    { purpose: '기존 실험값 확인', branches: [
+      ['조건이 맞는 측정값', 'CID·표적·실험 기록', '지표와 실험 대상 확인', '실험값 보고', 'PubChem 원자료의 값·단위·부등호와 실험 조건을 함께 보고한다. 이 경로의 모델 실행 횟수는 0회다.'],
+      ['관련 기록만 있음', '표적 관련 실험 기록', '측정 조건 확인 필요', '원자료 검토', '측정 지표나 생물종을 확인하기 어려운 행은 검토 대상으로 남긴다.'],
+      ['공개 DB 미조회', '실험 기록 미조회', '조회 필요', 'PubChem 조회 제안', '공개 DB 조회를 요청하면 입력 프로파일러가 결과를 저장한다. 갱신된 프로파일로 다시 라우팅한다.'],
+      ['조회 결과 없음', '요청 지표 기록 없음', '근거 부족', '조회 범위 보고', '조회한 자료에서 확인한 범위와 상태를 남긴다.']
+    ]},
+    { purpose: '결합 자세 확인', branches: [
+      ['동일 리간드 접촉 있음', '표적 사슬·리간드 접촉', '실험 구조 우선', 'PDB 좌표 검토', '리간드와 접촉한 사슬을 찾은 뒤, 실험 구성체의 변이와 관측 범위를 확인한다.'],
+      ['접촉 없음 · 실행 가능', '구조 조회 완료', '구조 예측 선택', 'Boltz-2 실행 제안', '동일 리간드의 접촉 기록을 찾지 못했고 입력·가중치·예산 조건을 충족하면, 예측 복합체를 생성할 수 있다.'],
+      ['구조 미조회', '구조 기록 미조회', '조회 필요', '실험 구조 조회 제안', '프로파일러가 리간드 식별자와 표적 사슬의 접촉 기록을 대조한 뒤 경로를 다시 정한다.']
+    ]},
+    { purpose: '후보 순위 탐색', branches: [
+      ['실행 조건 충족', '분자·서열 입력 검사', '경고 수와 시간 상한 비교', 'CNN 또는 MPNN 선택', '조건을 충족한 DeepPurpose 모델 하나를 선택한다. 같은 모델에서 계산한 원시 점수로 후보를 정렬한다.'],
+      ['적격 모델 없음', '입력·가중치·예산 확인', '후보 제외', '제외 사유 보고', '준비된 모델 중 요청 목적과 입력·시간 조건을 모두 만족하는 후보가 없으면 실행을 멈춘다.']
+    ]},
+    { purpose: '상호작용 점수 예측', branches: [
+      ['실행 조건 충족', '분자·서열 입력 검사', '상호작용 지표 선택', 'ConPLex 실행 제안', '화합물과 단백질 표현의 코사인 유사도를 반환한다.']
+    ]},
+    { purpose: 'IC50 예측', branches: [
+      ['실행 조건 충족', '분자·서열 입력 검사', 'IC50 출력 모델 선택', 'Boltz-2 실행 제안', '예측 농도의 로그값을 모델 출력으로 보관한다. 기존 실험값 조회는 별도 목적이다.']
+    ]}
+  ];
+
+  const find = (selector) => document.querySelector(selector);
+  function element(tag, content, className) {
+    const node = document.createElement(tag);
+    if (content !== undefined) node.textContent = content;
+    if (className) node.className = className;
+    return node;
+  }
+  const number = (index) => String(index + 1).padStart(2, '0');
+  function phaseArticle(phase, index) {
+    const article = find('#phase-template').content.firstElementChild.cloneNode(true);
+    article.querySelector('.phase-id').textContent = (index + 1) + '단계';
+    article.querySelector('.status').textContent = phase.status;
+    article.querySelector('h2').textContent = phase.title;
+    const tasks = article.querySelector('.tasks');
+    for (const [title, explanation] of phase.tasks) {
+      const item = element('li');
+      const text = element('div');
+      text.append(element('b', title), element('p', explanation));
+      item.append(text);
+      tasks.append(item);
+    }
+    const facts = article.querySelectorAll('dd');
+    [phase.current, phase.needs, phase.output].forEach((value, i) => { facts[i].textContent = value; });
+    article.querySelector('.criterion span').textContent = phase.gate;
+    return article;
+  }
+  const phaseLinks = phases.map((phase, i) => {
+    const link = element('a', undefined, 'phase-link');
+    link.href = '#phase-' + (i + 1);
+    link.setAttribute('aria-controls', 'detail');
+    link.append(element('span', number(i), 'step-no'), element('b', phase.label), element('small', phase.status));
+    find('.phases').append(link);
+    find('#print-phases').append(phaseArticle(phase, i));
+    return link;
+  });
+  function selectPhase() {
+    const index = Math.max(0, phaseLinks.findIndex(link => link.hash === location.hash));
+    phaseLinks.forEach((link, i) => {
+      if (index === i) link.setAttribute('aria-current', 'step');
+      else link.removeAttribute('aria-current');
+    });
+    const article = phaseArticle(phases[index], index);
+    article.classList.add('enter');
+    find('#detail').replaceChildren(article);
+  }
+  window.addEventListener('hashchange', selectPhase);
+  selectPhase();
+
+  const purpose = find('#purpose');
+  const condition = find('#condition');
+  function drawRoute() {
+    const [, observation, decision, outcome, explanation] = routes[purpose.selectedIndex].branches[condition.selectedIndex];
+    const graph = element('ol', undefined, 'route');
+    for (const [label, value] of [['입력 프로파일러', observation], ['모델 라우터', decision], ['다음 작업', outcome]]) {
+      if (graph.children.length) {
+        const arrow = element('li', '→', 'arrow');
+        arrow.setAttribute('aria-hidden', 'true');
+        graph.append(arrow);
+      }
+      const node = element('li', undefined, 'node');
+      node.append(element('small', label), element('b', value));
+      graph.append(node);
+    }
+    find('#route-result').replaceChildren(graph, element('p', explanation, 'route-note'));
+  }
+  function selectPurpose() {
+    const branches = routes[purpose.selectedIndex].branches;
+    condition.replaceChildren(...branches.map(([label]) => new Option(label)));
+    condition.hidden = branches.length === 1;
+    drawRoute();
+  }
+  routes.forEach(route => purpose.add(new Option(route.purpose)));
+  purpose.addEventListener('change', selectPurpose);
+  condition.addEventListener('change', drawRoute);
+  selectPurpose();
+  const printRoutes = find('#print-routes');
+  printRoutes.append(element('h2', '목적별 라우팅 예시'));
+  for (const route of routes) {
+    const group = element('div', undefined, 'print-route');
+    group.append(element('h3', route.purpose));
+    for (const [label, , , outcome] of route.branches) group.append(element('p', label + ' → ' + outcome));
+    printRoutes.append(group);
+  }
+  for (const link of document.querySelectorAll('[data-file]')) {
+    link.href = 'https://github.com/tae-yeop/dta-practice/blob/bd04db6f5b6156370d7aa39505eae9ae824cf8b4/' + link.dataset.file;
+  }
+  for (const button of document.querySelectorAll('[data-dialog]')) {
+    const dialog = document.getElementById(button.dataset.dialog);
+    button.addEventListener('click', () => dialog.showModal());
+    dialog.querySelector('[data-close]').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (event) => {
+      if (event.target !== dialog) return;
+      const rect = dialog.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
+    });
+  }
+  </script>
+</body>
+</html>
